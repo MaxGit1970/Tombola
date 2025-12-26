@@ -1,290 +1,236 @@
-<!-- index.html -->
+<!-- index.html (mobile-friendly, tutto centrato nello schermo) -->
 <!doctype html>
 <html lang="it">
-
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Tombola Natalizia</title>
-    <style>
-        :root {
-            --bgA: #ff1e3a;
-            /* rosso Natale vivo */
-            --bgB: #c4001a;
-            /* rosso scuro ma NON nero */
-            --bgC: #ffcc2e;
-            /* giallo caldo (leggero) */
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tombola Natalizia</title>
 
-            --card: rgba(255, 255, 255, .72);
-            --stroke: rgba(255, 255, 255, .75);
+  <style>
+    :root{
+      --bgA:#ff1e3a;   /* rosso Natale */
+      --bgB:#c4001a;   /* rosso profondo (sfumatura più visibile) */
+      --gold:#ffcc2e;
+      --green:#0a8f3f;
 
-            --txt: #1b1b1b;
-            /* testo scuro */
-            --mut: #3a3a3a;
+      --txt:#141414;
+      --mut:#2e2e2e;
 
-            --red: #d7001b;
-            --green: #0a8f3f;
-            --gold: #ffcc2e;
-            --white: #ffffff;
+      --stroke: rgba(255,255,255,.75);
+      --shadow: 0 20px 55px rgba(0,0,0,.18);
+      --r: 22px;
+    }
 
-            --shadow: 0 20px 55px rgba(0, 0, 0, .20);
-            --r: 22px;
-        }
+    *{ box-sizing:border-box; }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            color: var(--txt);
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            background:
-                radial-gradient(900px 600px at 20% 15%, rgba(255, 255, 255, .28) 0%, transparent 55%),
-                radial-gradient(700px 500px at 85% 10%, rgba(255, 204, 46, .45) 0%, transparent 55%),
-                radial-gradient(900px 700px at 70% 85%, rgba(255, 255, 255, .22) 0%, transparent 60%),
-                linear-gradient(135deg, var(--bgA), var(--bgB));
-            overflow-x: hidden;
-        }
+    body{
+      margin:0;
+      min-height: 100svh;           /* meglio di 100vh su mobile */
+      color:var(--txt);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(900px 600px at 20% 15%, rgba(255,255,255,.30) 0%, transparent 55%),
+        radial-gradient(700px 520px at 85% 10%, rgba(255,204,46,.45) 0%, transparent 55%),
+        radial-gradient(900px 700px at 70% 85%, rgba(255,255,255,.22) 0%, transparent 60%),
+        linear-gradient(135deg, var(--bgA), var(--bgB));
+      overflow-x:hidden;
 
+      /* centra tutto */
+      display:flex;
+      justify-content:center;
+      align-items:center;
 
-        * {
-            box-sizing: border-box
-        }
+      /* respiro su schermi piccoli */
+      padding: 18px 0;
+    }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            color: var(--txt);
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            background:
-                radial-gradient(900px 520px at 10% 10%, rgba(255, 31, 61, .45) 0%, transparent 55%),
-                radial-gradient(900px 520px at 90% 20%, rgba(0, 210, 106, .40) 0%, transparent 55%),
-                radial-gradient(800px 500px at 50% 0%, rgba(255, 208, 0, .35) 0%, transparent 60%),
-                linear-gradient(180deg, var(--bg1), var(--bg2));
+    .wrap{
+      width: 100%;
+      max-width: 980px;
+      padding: 0 16px;
+      display:flex;
+      flex-direction:column;
+      gap: 18px;
+      align-items:center; /* centra hero+footer come blocchi */
+    }
 
-            overflow-x: hidden;
-        }
+    .hero{
+      width:100%;
+      position: relative;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.90), rgba(255,255,255,.74));
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      overflow: hidden;
+      text-align: center;
+    }
 
-        .wrap {
-            max-width: 980px;
-            margin: 0 auto;
-            padding: 28px 18px 70px
-        }
+    .orn{
+      position:absolute;
+      inset:-140px -140px auto auto;
+      width:420px;
+      height:420px;
+      border-radius:50%;
+      background:
+        radial-gradient(circle at 35% 30%, rgba(255,204,46,.75), transparent 50%),
+        radial-gradient(circle at 65% 45%, rgba(10,143,63,.35), transparent 55%),
+        radial-gradient(circle at 35% 75%, rgba(255,30,58,.55), transparent 55%);
+      opacity:.85;
+      transform: rotate(18deg);
+      pointer-events:none;
+    }
 
-        .hero {
-            position: relative;
-            border: 1px solid var(--stroke);
-            background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .06));
-            border-radius: var(--r);
-            box-shadow: var(--shadow);
-            padding: 26px;
-            overflow: hidden;
-        }
+    h1{
+      margin: 10px 0 10px;
+      font-size: clamp(30px, 6vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.3px;
+    }
 
-        .badge {
-            display: inline-flex;
-            gap: 10px;
-            align-items: center;
-            padding: 8px 12px;
-            border-radius: 999px;
-            border: 1px solid var(--stroke);
-            background: rgba(0, 0, 0, .18);
-            color: var(--mut);
-            font-size: 14px;
-        }
+    .sub{
+      margin: 0 auto 14px;
+      max-width: 70ch;
+      color: rgba(0,0,0,.72);
+      font-size: 16px;
+      line-height: 1.5;
+    }
 
-        h1 {
-            margin: 14px 0 8px;
-            font-size: clamp(30px, 4vw, 44px);
-            line-height: 1.05
-        }
+    .ctaRow{
+      display:flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 12px;
+    }
 
-        .sub {
-            color: var(--mut);
-            margin: 0 0 16px;
-            max-width: 70ch
-        }
+    a.btn{
+      text-decoration:none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-weight: 900;
+      letter-spacing: .2px;
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      justify-content:center;
+      border: 1px solid rgba(0,0,0,.12);
+      box-shadow: 0 14px 30px rgba(0,0,0,.18);
+      user-select: none;
+      color: #111;
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 14px;
-            margin-top: 18px
-        }
+      /* mobile: bottoni grandi e comodi */
+      min-height: 48px;
+      min-width: min(420px, 100%);
+      width: 100%;
+    }
 
-        @media(min-width:820px) {
-            .grid {
-                grid-template-columns: 1fr 1fr
-            }
-        }
+    /* su desktop tornano "affiancati" */
+    @media (min-width: 620px){
+      a.btn{
+        width: auto;
+        min-width: 280px;
+      }
+    }
 
-        .card {
-            border: 1px solid var(--stroke);
-            background: rgba(255, 255, 255, .06);
-            border-radius: var(--r);
-            padding: 18px;
-        }
+    .btn.red{
+      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
+    }
 
-        .ctaRow {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-top: 14px
-        }
+    .btn.gold{
+      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
+    }
 
-        a.btn {
-            text-decoration: none;
-            color: #111;
-            padding: 12px 14px;
-            border-radius: 14px;
-            font-weight: 800;
-            letter-spacing: .2px;
-            display: inline-flex;
-            gap: 10px;
-            align-items: center;
-            border: 1px solid rgba(255, 255, 255, .22);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, .25);
-            user-select: none;
-        }
+    footer{
+      text-align: center;
+      font-size: clamp(24px, 4.5vw, 44px);
+      font-weight: 900;
+      letter-spacing: .3px;
+      color: rgba(255,255,255,.96);
+      text-shadow: 0 10px 24px rgba(0,0,0,.20);
+      padding-bottom: 2px;
+    }
 
-        .btn.red {
-            background: linear-gradient(180deg, #ff7a87, #ff4156)
-        }
+    /* Glitter snow */
+    .snow{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      overflow:hidden;
+    }
+    .flake{
+      position:absolute;
+      top:-10px;
+      width:7px;
+      height:7px;
+      border-radius:50%;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 0 16px rgba(255,255,255,.45);
+      opacity:.9;
+      animation: fall linear infinite;
+    }
+    .flake.gold{
+      background: rgba(255,204,46,.95);
+      box-shadow: 0 0 16px rgba(255,204,46,.45);
+      opacity:.85;
+    }
+    @keyframes fall{
+      to{ transform: translate3d(var(--dx), 110svh, 0); }
+    }
 
-        .btn.gold {
-            background: linear-gradient(180deg, #ffe7a1, #f6d365)
-        }
-
-        .note {
-            font-size: 14px;
-            color: var(--mut);
-            line-height: 1.55
-        }
-
-        ul {
-            margin: 10px 0 0 18px;
-            color: var(--mut)
-        }
-
-        .orn {
-            position: absolute;
-            inset: -120px -120px auto auto;
-            width: 360px;
-            height: 360px;
-            border-radius: 50%;
-            background: radial-gradient(circle at 35% 30%, rgba(246, 211, 101, .7), transparent 50%),
-                radial-gradient(circle at 60% 70%, rgba(255, 90, 107, .55), transparent 55%),
-                radial-gradient(circle at 30% 75%, rgba(55, 211, 155, .35), transparent 55%);
-            opacity: .65;
-            transform: rotate(20deg);
-            pointer-events: none;
-        }
-
-        .snow {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden
-        }
-
-        .flake {
-            position: absolute;
-            top: -10px;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .9);
-            box-shadow: 0 0 12px rgba(255, 255, 255, .35);
-            opacity: .85;
-            animation: fall linear infinite;
-        }
-
-        @keyframes fall {
-            to {
-                transform: translate3d(var(--dx), 110vh, 0);
-            }
-        }
-
-        footer {
-            margin-top: 20px;
-            color: rgba(255, 255, 255, .55);
-            font-size: 13px
-        }
-
-        code {
-            background: rgba(0, 0, 0, .22);
-            padding: 2px 6px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, .14)
-        }
-    </style>
+    /* accessibilità: riduci animazioni se richiesto */
+    @media (prefers-reduced-motion: reduce){
+      .flake{ animation: none; opacity: .35; }
+    }
+  </style>
 </head>
 
 <body>
-    <div class="snow" id="snow"></div>
+  <div class="snow" id="snow"></div>
 
-    <div class="wrap">
-        <div class="hero">
-            <div class="orn"></div>
-            <div class="badge">🎄 Tombola Natalizia • 100% GitHub Pages • Zero backend</div>
-            <h1>Tabellone condiviso + cartelle sui telefoni</h1>
-            <p class="sub">
-                Un host estrae i numeri sul <b>Tabellone</b> e condivide lo schermo in Zoom/Meet/Teams.
-                I giocatori aprono le <b>Cartelle</b> e marcano con un tocco.
-            </p>
+  <div class="wrap">
+    <div class="hero">
+      <div class="orn"></div>
 
-            <div class="ctaRow">
-                <a class="btn red" href="./tabellone.html">🎱 Apri Tabellone (Host)</a>
-                <a class="btn gold" href="./cartelle.html">🧾 Apri Cartelle (Giocatori)</a>
-            </div>
-        </div>
+      <h1>🎄 Tombola Natalizia • Max 🎄</h1>
 
-        <div class="grid">
-            <div class="card">
-                <h2 style="margin:0 0 8px">Come si gioca (online)</h2>
-                <div class="note">
-                    <ul>
-                        <li>L’host apre <b>Tabellone</b> e clicca <b>Estrai</b>.</li>
-                        <li>Condivide lo schermo in una videochiamata.</li>
-                        <li>I giocatori aprono <b>Cartelle</b> su smartphone/PC e marcano.</li>
-                        <li>Per i premi: chi dichiara per primo (chat / mano alzata) vince.</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="card">
-                <h2 style="margin:0 0 8px">Tip pratici</h2>
-                <div class="note">
-                    <ul>
-                        <li>Host: usa <code>F11</code> (fullscreen) e <code>Spazio</code> per estrarre.</li>
-                        <li>Le cartelle sono locali: ogni giocatore marca sul proprio dispositivo.</li>
-                        <li>Il tabellone mostra anche <b>La Smorfia</b> associata ai numeri.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+      <p class="sub">
+        
+      </p>
 
-        <footer>Made for Christmas vibes ✨</footer>
+      <div class="ctaRow">
+        <a class="btn gold" href="./tabellone.html">Apri Tabellone (Conduttore)</a>
+        <a class="btn gold" href="./cartelle.html">Apri Cartelle (Giocatori)</a>
+      </div>
     </div>
 
-    <script>
-        const snow = document.getElementById('snow');
-        const N = 45;
-        for (let i = 0; i < N; i++) {
-            const f = document.createElement('div');
-            f.className = 'flake';
-            const x = Math.random() * 100;
-            const size = 4 + Math.random() * 7;
-            const dur = 8 + Math.random() * 14;
-            const dx = (Math.random() * 2 - 1) * 140 + "px";
-            f.style.left = x + "vw";
-            f.style.width = size + "px";
-            f.style.height = size + "px";
-            f.style.animationDuration = dur + "s";
-            f.style.setProperty('--dx', dx);
-            f.style.opacity = (0.35 + Math.random() * 0.6).toFixed(2);
-            f.style.filter = `blur(${(Math.random() * 0.7).toFixed(2)}px)`;
-            f.style.animationDelay = (-Math.random() * dur) + "s";
-            snow.appendChild(f);
-        }
-    </script>
-</body>
+    <footer>✨ Buone feste e buona tombola! ✨</footer>
+  </div>
 
+  <script>
+    // Glitter snow (white + gold) - leggero anche su mobile
+    const snow = document.getElementById('snow');
+    const N = 42; // meno particelle = più fluido su telefono
+    for (let i = 0; i < N; i++) {
+      const f = document.createElement('div');
+      const isGold = Math.random() < 0.22;
+      f.className = 'flake' + (isGold ? ' gold' : '');
+      const x = Math.random() * 100;
+      const size = 4 + Math.random() * 6;
+      const dur = 8 + Math.random() * 14;
+      const dx = (Math.random() * 2 - 1) * 160 + "px";
+
+      f.style.left = x + "vw";
+      f.style.width = size + "px";
+      f.style.height = size + "px";
+      f.style.animationDuration = dur + "s";
+      f.style.setProperty('--dx', dx);
+      f.style.opacity = (0.35 + Math.random() * 0.6).toFixed(2);
+      f.style.filter = `blur(${(Math.random() * 0.6).toFixed(2)}px)`;
+      f.style.animationDelay = (-Math.random() * dur) + "s";
+
+      snow.appendChild(f);
+    }
+  </script>
+</body>
 </html>

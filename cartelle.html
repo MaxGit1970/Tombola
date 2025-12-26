@@ -1,479 +1,497 @@
-<!-- cartelle.html -->
+<!-- cartelle.html (mobile-friendly, centrato, bottoni 1-4, no seed, numeri più visibili) -->
 <!doctype html>
 <html lang="it">
-
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Cartelle – Tombola Natalizia</title>
-    <style>
-        :root {
-            --bg1: #0b1020;
-            --bg2: #06140c;
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cartelle – Tombola Natalizia</title>
 
-            --stroke: rgba(255, 255, 255, .26);
-            --txt: #ffffff;
-            --mut: rgba(255, 255, 255, .82);
+  <style>
+    :root{
+      --bgA:#ff1e3a;
+      --bgB:#c4001a;
+      --gold:#ffcc2e;
+      --green:#0a8f3f;
 
-            --red: #ff1f3d;
-            --green: #00d26a;
-            --gold: #ffd000;
-            --white: #ffffff;
+      --txt:#141414;
+      --mut:#2e2e2e;
 
-            --shadow: 0 22px 60px rgba(0, 0, 0, .45);
-            --r: 18px;
+      --card: rgba(255,255,255,.86);
+      --stroke: rgba(255,255,255,.78);
+      --shadow: 0 20px 55px rgba(0,0,0,.18);
+      --r: 18px;
 
-            --bean: rgba(255, 31, 61, .30);
-            --beanStroke: rgba(255, 31, 61, .75);
-        }
+      --bean: rgba(215,0,27,.22);
+      --beanStroke: rgba(215,0,27,.58);
+    }
 
-        * {
-            box-sizing: border-box
-        }
+    *{ box-sizing:border-box; }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            color: var(--txt);
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            background:
-                radial-gradient(900px 520px at 12% 12%, rgba(255, 31, 61, .38) 0%, transparent 58%),
-                radial-gradient(820px 520px at 90% 20%, rgba(0, 210, 106, .34) 0%, transparent 58%),
-                radial-gradient(760px 520px at 55% 0%, rgba(255, 208, 0, .26) 0%, transparent 62%),
-                linear-gradient(180deg, var(--bg1), var(--bg2));
+    body{
+      margin:0;
+      min-height: 100svh; /* meglio su mobile */
+      color:var(--txt);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1000px 700px at 10% 10%, rgba(255,255,255,.30) 0%, transparent 58%),
+        radial-gradient(800px 600px at 90% 12%, rgba(255,204,46,.35) 0%, transparent 55%),
+        radial-gradient(900px 700px at 70% 90%, rgba(255,255,255,.22) 0%, transparent 62%),
+        linear-gradient(135deg, var(--bgA), var(--bgB));
 
-        }
+      /* centro contenuto */
+      display:flex;
+      justify-content:center;
+      align-items:center;
 
-        header {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 18px 14px
-        }
+      /* respiro su telefoni */
+      padding: 16px 0;
 
-        .top {
-            display: flex;
-            gap: 14px;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between
-        }
+      overflow-x:hidden;
+    }
 
-        .brand {
-            display: flex;
-            gap: 10px;
-            align-items: center
-        }
+    .wrap{
+      width:100%;
+      max-width: 1100px;
+      padding: 0 14px 48px;
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+      align-items:center; /* centra i blocchi */
+    }
 
-        .brand b {
-            font-size: 18px
-        }
+    header{
+      width:100%;
+      max-width: 1100px;
+      padding: 0 14px;
+    }
 
-        .pill {
-            border: 1px solid var(--stroke);
-            background: rgba(0, 0, 0, .18);
-            padding: 8px 10px;
-            border-radius: 999px;
-            color: var(--mut);
-            font-size: 13px
-        }
+    .top{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
 
-        main {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 14px 60px
-        }
+    .brand{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
 
-        .card {
-            border: 1px solid var(--stroke);
-            background: rgba(255, 255, 255, .07);
-            border-radius: var(--r);
-            box-shadow: var(--shadow);
-            padding: 14px;
-            margin-bottom: 14px;
-        }
+    .brand b{ font-size:18px; }
 
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center
-        }
+    .pill{
+      border:1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.82);
+      padding:8px 10px;
+      border-radius:999px;
+      color: rgba(0,0,0,.68);
+      font-size:13px;
+      line-height:1.2;
+    }
 
-        select,
-        input,
-        button {
-            border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, .22);
-            background: rgba(255, 255, 255, .10);
-            color: var(--txt);
-            padding: 10px 12px;
-            font-weight: 800;
-        }
+    main{
+      width:100%;
+      max-width:1100px;
+      padding: 0 14px;
+      display:flex;
+      flex-direction:column;
+      gap: 14px;
+      align-items:center;
+    }
 
-        button {
-            cursor: pointer;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, .22);
-        }
+    .card{
+      width:100%;
+      border:1px solid var(--stroke);
+      background: var(--card);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
 
-        button.gold {
-            background: linear-gradient(180deg, #ffe7a1, #f6d365);
-            color: #0b1020
-        }
+    .controls{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      align-items:center;
+      text-align:center;
+    }
 
-        button.red {
-            background: linear-gradient(180deg, #ff7a87, #ff4156);
-            color: #0b1020
-        }
+    .label{
+      font-weight: 900;
+      font-size: 16px;
+      color:#111;
+    }
 
-        .note {
-            color: var(--mut);
-            font-size: 13px;
-            margin-top: 10px;
-            line-height: 1.45
-        }
+    .btnRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+      width:100%;
+    }
 
-        .cards {
-            display: grid;
-            gap: 14px;
-            grid-template-columns: 1fr;
-        }
+    button{
+      border-radius: 16px;
+      border:1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.90);
+      color: #111;
+      padding: 12px 14px;
+      font-weight: 900;
+      cursor:pointer;
+      box-shadow: 0 14px 30px rgba(0,0,0,.14);
+      min-height: 48px;
+      user-select:none;
+    }
 
-        @media(min-width:980px) {
-            .cards {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
+    /* bottoni quantità cartelle */
+    .qtyBtn{
+      min-width: 62px;
+      font-size: 18px;
+    }
+    .qtyBtn.active{
+      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
+      border-color: rgba(0,0,0,.16);
+    }
 
-        .tcard {
-            border: 1px solid var(--stroke);
-            background: rgba(255, 255, 255, .06);
-            border-radius: var(--r);
-            padding: 12px;
-            position: relative;
-            overflow: hidden;
-        }
+    /* bottoni azione */
+    .actionRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+      width:100%;
+      margin-top: 4px;
+    }
 
-        .tcard h3 {
-            margin: 0 0 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline
-        }
+    .red{
+      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
+      color:#111;
+    }
+    .gold{
+      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
+      color:#111;
+    }
 
-        .grid9 {
-            display: grid;
-            grid-template-columns: repeat(9, 1fr);
-            gap: 8px;
-        }
+    .note{
+      color: rgba(0,0,0,.68);
+      font-size: 13px;
+      line-height: 1.45;
+      text-align:center;
+      margin-top: 4px;
+    }
 
-        .cell {
-            height: 48px;
-            border-radius: 14px;
-            border: 1px solid var(--stroke);
-            background: rgba(0, 0, 0, .16);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            user-select: none;
-            position: relative;
-            cursor: pointer;
-        }
+    .cards{
+      width:100%;
+      display:grid;
+      gap:14px;
+      grid-template-columns: 1fr; /* mobile */
+    }
 
-        .cell.empty {
-            background: rgba(255, 255, 255, .04);
-            cursor: default
-        }
+    /* tablet/desktop */
+    @media(min-width: 860px){
+      .cards{ grid-template-columns: 1fr 1fr; }
+    }
 
-        .cell.marked {
-            background: linear-gradient(180deg, rgba(255, 31, 61, .40), rgba(255, 31, 61, .20));
-            border-color: rgba(255, 31, 61, .85);
-            box-shadow: 0 10px 24px rgba(255, 31, 61, .18);
-        }
+    .tcard{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.88);
+      border-radius: var(--r);
+      padding: 12px;
+      overflow:hidden;
+      box-shadow: 0 18px 40px rgba(0,0,0,.12);
+    }
 
+    .tcard h3{
+      margin:0 0 10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+    }
 
-        .cell.marked::after {
-            content: "🫘";
-            position: absolute;
-            right: 8px;
-            top: 6px;
-            font-size: 16px;
-            opacity: .95;
-            filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .30));
-        }
+    .grid9{
+      display:grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 8px;
+    }
 
-        .snow {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden
-        }
+    /* NUMERI MOLTO PIÙ VISIBILI */
+    .cell{
+      height: 56px;                 /* più alto */
+      border-radius: 16px;
+      border: 2px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.95);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight: 1000;
+      user-select:none;
+      position:relative;
+      cursor:pointer;
+      color:#0b0b0b;
 
-        .flake {
-            position: absolute;
-            top: -10px;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .9);
-            box-shadow: 0 0 12px rgba(255, 255, 255, .35);
-            opacity: .85;
-            animation: fall linear infinite;
-        }
+      font-size: clamp(20px, 4.6vw, 28px); /* grande su mobile, ancora grande su desktop */
+      letter-spacing: .2px;
 
-        @keyframes fall {
-            to {
-                transform: translate3d(var(--dx), 110vh, 0);
-            }
-        }
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+    }
 
-        @media print {
+    .cell.empty{
+      background: rgba(255,255,255,.65);
+      cursor:default;
+      border-color: rgba(0,0,0,.06);
+      box-shadow:none;
+    }
 
-            header,
-            .controls,
-            .note {
-                display: none !important;
-            }
+    .cell.marked{
+      background: linear-gradient(180deg, rgba(215,0,27,.32), rgba(215,0,27,.16));
+      border-color: rgba(215,0,27,.62);
+      box-shadow: 0 12px 26px rgba(215,0,27,.14);
+    }
 
-            body {
-                background: #fff;
-                color: #000;
-            }
+    .cell.marked::after{
+      content:"🫘";
+      position:absolute;
+      right:8px;
+      top:6px;
+      font-size: 18px;
+      opacity:.95;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.22));
+    }
 
-            .card {
-                box-shadow: none;
-                border: none;
-                background: #fff;
-            }
+    /* Stampa */
+    @media print{
+      header, .card, .note { display:none !important; }
+      body{ background:#fff !important; color:#000; display:block; padding:0; }
+      main{ max-width:none; padding:0; }
+      .tcard{ break-inside: avoid; background:#fff; border:1px solid #ddd; box-shadow:none; }
+      .cell{ background:#fff; border:1px solid #bbb; color:#000; box-shadow:none; font-size:18px; }
+      .cell.empty{ background:#fff; border:1px solid #eee; }
+      .cell.marked::after{ content:""; }
+    }
 
-            .tcard {
-                break-inside: avoid;
-                background: #fff;
-                border: 1px solid #ddd;
-            }
+    /* Glitter snow */
+    .snow{ position:fixed; inset:0; pointer-events:none; overflow:hidden; }
+    .flake{
+      position:absolute;
+      top:-10px;
+      width:7px;
+      height:7px;
+      border-radius:50%;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 0 16px rgba(255,255,255,.45);
+      opacity:.9;
+      animation: fall linear infinite;
+    }
+    .flake.gold{
+      background: rgba(255,204,46,.95);
+      box-shadow: 0 0 16px rgba(255,204,46,.45);
+      opacity:.85;
+    }
+    @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
 
-            .cell {
-                background: #fff;
-                border: 1px solid #bbb;
-                color: #000;
-            }
-
-            .cell.empty {
-                background: #fff;
-                border: 1px solid #eee;
-            }
-
-            .cell.marked::after {
-                content: "";
-            }
-        }
-    </style>
+    @media (prefers-reduced-motion: reduce){
+      .flake{ animation:none; opacity:.35; }
+    }
+  </style>
 </head>
 
 <body>
-    <div class="snow" id="snow"></div>
+  <div class="snow" id="snow"></div>
 
+  <div class="wrap">
     <header>
-        <div class="top">
-            <div class="brand">
-                <div style="font-size:22px">🧾</div>
-                <div>
-                    <b>Cartelle</b>
-                    <div class="pill">Tocca un numero per mettere/togliere il fagiolo</div>
-                </div>
-            </div>
-            <a class="pill" href="./index.html" style="text-decoration:none;color:inherit">← Home</a>
+      <div class="top">
+        <div class="brand">
+          <div style="font-size:24px">🧾</div>
+          <div>
+            <b>Cartelle</b>
+            <div class="pill">Tocca un numero per mettere/togliere il fagiolo</div>
+          </div>
         </div>
+        <a class="pill" href="./index.html" style="text-decoration:none;color:inherit">← Home</a>
+      </div>
     </header>
 
     <main>
-        <div class="card">
-            <div class="controls">
-                <label style="display:flex;gap:8px;align-items:center">
-                    Quante cartelle:
-                    <select id="nCards">
-                        <option>1</option>
-                        <option>2</option>
-                        <option>3</option>
-                        <option>4</option>
-                        <option>5</option>
-                        <option>6</option>
-                    </select>
-                </label>
+      <div class="card">
+        <div class="controls">
+          <div class="label">Quante cartelle?</div>
 
-                <label style="display:flex;gap:8px;align-items:center">
-                    Seed (opzionale):
-                    <input id="seed" placeholder="es. NATALE2025" />
-                </label>
+          <div class="btnRow" id="qtyRow">
+            <button class="qtyBtn active" data-n="1">1</button>
+            <button class="qtyBtn" data-n="2">2</button>
+            <button class="qtyBtn" data-n="3">3</button>
+            <button class="qtyBtn" data-n="4">4</button>
+          </div>
 
-                <button class="red" id="gen">🎄 Genera cartelle</button>
-                <button class="gold" id="print">🖨️ Stampa</button>
-            </div>
-            <div class="note">
-                Suggerimento: se tutti vogliono cartelle diverse senza coordinarsi, lascia il seed vuoto.
-                Se vuoi “replicare” una cartella, usa lo stesso seed.
-            </div>
+          <div class="actionRow">
+            <button class="red" id="gen">🎄 Genera cartelle</button>
+            <button class="gold" id="print">🖨️ Stampa</button>
+          </div>
+
+          <div class="note">
+            Le cartelle vengono generate casualmente ad ogni click su “Genera cartelle”.
+          </div>
         </div>
+      </div>
 
-        <div class="cards" id="cards"></div>
+      <div class="cards" id="cards"></div>
     </main>
+  </div>
 
-    <script>
-        const snow = document.getElementById('snow');
-        const N = 45;
-        for (let i = 0; i < N; i++) {
-            const f = document.createElement('div');
-            f.className = 'flake';
-            const x = Math.random() * 100;
-            const size = 4 + Math.random() * 7;
-            const dur = 8 + Math.random() * 14;
-            const dx = (Math.random() * 2 - 1) * 140 + "px";
-            f.style.left = x + "vw";
-            f.style.width = size + "px";
-            f.style.height = size + "px";
-            f.style.animationDuration = dur + "s";
-            f.style.setProperty('--dx', dx);
-            f.style.opacity = (0.35 + Math.random() * 0.6).toFixed(2);
-            f.style.filter = `blur(${(Math.random() * 0.7).toFixed(2)}px)`;
-            f.style.animationDelay = (-Math.random() * dur) + "s";
-            snow.appendChild(f);
+  <script>
+    // Glitter snow (meno particelle = meglio su mobile)
+    const snow = document.getElementById('snow');
+    const N = 42;
+    for(let i=0;i<N;i++){
+      const f = document.createElement('div');
+      const isGold = Math.random() < 0.22;
+      f.className = 'flake' + (isGold ? ' gold' : '');
+      const x = Math.random()*100;
+      const size = 4 + Math.random()*6;
+      const dur = 8 + Math.random()*14;
+      const dx = (Math.random()*2-1) * 160 + "px";
+      f.style.left = x + "vw";
+      f.style.width = size + "px";
+      f.style.height = size + "px";
+      f.style.animationDuration = dur + "s";
+      f.style.setProperty('--dx', dx);
+      f.style.opacity = (0.35 + Math.random()*0.6).toFixed(2);
+      f.style.filter = `blur(${(Math.random()*0.6).toFixed(2)}px)`;
+      f.style.animationDelay = (-Math.random()*dur) + "s";
+      snow.appendChild(f);
+    }
+
+    // RNG (non-seeded) per cartelle sempre diverse
+    function rng(){ return Math.random(); }
+
+    function pickUnique(arr, k){
+      const a = arr.slice();
+      const out = [];
+      for(let i=0;i<k;i++){
+        const idx = Math.floor(rng()*a.length);
+        out.push(a.splice(idx,1)[0]);
+      }
+      return out;
+    }
+
+    // Colonne tombola italiana
+    const COLS = [
+      {min:1,max:9},
+      {min:10,max:19},
+      {min:20,max:29},
+      {min:30,max:39},
+      {min:40,max:49},
+      {min:50,max:59},
+      {min:60,max:69},
+      {min:70,max:79},
+      {min:80,max:90},
+    ];
+
+    function makeCard(){
+      // quante cifre per colonna (1..3), totale 15
+      let counts = Array(9).fill(1); // 9 numeri
+      let remaining = 6; // arrivare a 15
+      while(remaining > 0){
+        const c = Math.floor(rng()*9);
+        if(counts[c] < 3){ counts[c]++; remaining--; }
+      }
+
+      // numeri per colonna
+      const colNums = counts.map((cnt, ci)=>{
+        const range = [];
+        for(let n=COLS[ci].min; n<=COLS[ci].max; n++) range.push(n);
+        return pickUnique(range, cnt).sort((a,b)=>a-b);
+      });
+
+      // assegna alle 3 righe (5 numeri per riga)
+      for(let attempt=0; attempt<250; attempt++){
+        const rowCounts = [0,0,0];
+        const placement = Array(9).fill(null).map(()=>[]);
+
+        for(let ci=0; ci<9; ci++){
+          const cnt = colNums[ci].length;
+          let rows;
+          if(cnt === 3) rows = [0,1,2];
+          else if(cnt === 2){
+            const order = [0,1,2].sort((a,b)=>rowCounts[a]-rowCounts[b] || (rng()-0.5));
+            rows = [order[0], order[1]];
+          } else {
+            const order = [0,1,2].sort((a,b)=>rowCounts[a]-rowCounts[b] || (rng()-0.5));
+            rows = [order[0]];
+          }
+          for(const r of rows){
+            placement[ci].push(r);
+            rowCounts[r]++;
+          }
         }
 
-        // Seeded RNG (mulberry32)
-        function xmur3(str) {
-            let h = 1779033703 ^ str.length;
-            for (let i = 0; i < str.length; i++) {
-                h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
-                h = (h << 13) | (h >>> 19);
+        if(rowCounts[0]===5 && rowCounts[1]===5 && rowCounts[2]===5){
+          const grid = Array.from({length:3}, ()=>Array(9).fill(null));
+          for(let ci=0; ci<9; ci++){
+            const rows = placement[ci].slice().sort((a,b)=>a-b);
+            const nums = colNums[ci];
+            for(let i=0;i<rows.length;i++){
+              grid[rows[i]][ci] = nums[i];
             }
-            return function () {
-                h = Math.imul(h ^ (h >>> 16), 2246822507);
-                h = Math.imul(h ^ (h >>> 13), 3266489909);
-                return (h ^= (h >>> 16)) >>> 0;
-            }
+          }
+          return grid;
         }
-        function mulberry32(a) {
-            return function () {
-                let t = a += 0x6D2B79F5;
-                t = Math.imul(t ^ (t >>> 15), t | 1);
-                t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-            }
+      }
+      return makeCard();
+    }
+
+    function renderCard(container, idx, grid){
+      const card = document.createElement('div');
+      card.className = "tcard";
+      card.innerHTML = `<h3><span>Cartella ${idx+1}</span><span style="color:rgba(0,0,0,.55);font-size:13px">🎅</span></h3>`;
+      const g = document.createElement('div');
+      g.className = 'grid9';
+
+      grid.flat().forEach((val)=>{
+        const c = document.createElement('div');
+        c.className = 'cell' + (val==null ? ' empty' : '');
+        c.textContent = val==null ? '' : val;
+        if(val!=null){
+          c.addEventListener('click', ()=> c.classList.toggle('marked'));
         }
-        function pickUnique(rng, arr, k) {
-            const a = arr.slice();
-            const out = [];
-            for (let i = 0; i < k; i++) {
-                const idx = Math.floor(rng() * a.length);
-                out.push(a.splice(idx, 1)[0]);
-            }
-            return out;
-        }
+        g.appendChild(c);
+      });
 
-        const COLS = [
-            { min: 1, max: 9 },
-            { min: 10, max: 19 },
-            { min: 20, max: 29 },
-            { min: 30, max: 39 },
-            { min: 40, max: 49 },
-            { min: 50, max: 59 },
-            { min: 60, max: 69 },
-            { min: 70, max: 79 },
-            { min: 80, max: 90 },
-        ];
+      card.appendChild(g);
+      container.appendChild(card);
+    }
 
-        function makeCard(rng) {
-            let counts = Array(9).fill(1); // 9 numeri
-            let remaining = 6; // arrivare a 15
-            while (remaining > 0) {
-                const c = Math.floor(rng() * 9);
-                if (counts[c] < 3) { counts[c]++; remaining--; }
-            }
+    let selectedN = 1;
 
-            const colNums = counts.map((cnt, ci) => {
-                const range = [];
-                for (let n = COLS[ci].min; n <= COLS[ci].max; n++) range.push(n);
-                const nums = pickUnique(rng, range, cnt).sort((a, b) => a - b);
-                return nums;
-            });
+    // bottoni 1-4
+    const qtyRow = document.getElementById('qtyRow');
+    qtyRow.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-n]');
+      if(!btn) return;
+      selectedN = parseInt(btn.dataset.n, 10);
+      qtyRow.querySelectorAll('.qtyBtn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+    });
 
-            for (let attempt = 0; attempt < 250; attempt++) {
-                const rowCounts = [0, 0, 0];
-                const placement = Array(9).fill(null).map(() => []);
+    function generate(){
+      const wrap = document.getElementById('cards');
+      wrap.innerHTML = "";
+      for(let i=0;i<selectedN;i++){
+        const grid = makeCard();
+        renderCard(wrap, i, grid);
+      }
+      // scroll morbido verso le cartelle su mobile
+      wrap.scrollIntoView({behavior:'smooth', block:'start'});
+    }
 
-                for (let ci = 0; ci < 9; ci++) {
-                    const cnt = colNums[ci].length;
-                    let rows;
-                    if (cnt === 3) rows = [0, 1, 2];
-                    else if (cnt === 2) {
-                        const order = [0, 1, 2].sort((a, b) => rowCounts[a] - rowCounts[b] || (rng() - 0.5));
-                        rows = [order[0], order[1]];
-                    } else {
-                        const order = [0, 1, 2].sort((a, b) => rowCounts[a] - rowCounts[b] || (rng() - 0.5));
-                        rows = [order[0]];
-                    }
-                    for (const r of rows) {
-                        placement[ci].push(r);
-                        rowCounts[r]++;
-                    }
-                }
+    document.getElementById('gen').onclick = generate;
+    document.getElementById('print').onclick = () => window.print();
 
-                if (rowCounts[0] === 5 && rowCounts[1] === 5 && rowCounts[2] === 5) {
-                    const grid = Array.from({ length: 3 }, () => Array(9).fill(null));
-                    for (let ci = 0; ci < 9; ci++) {
-                        const rows = placement[ci].slice().sort((a, b) => a - b);
-                        const nums = colNums[ci];
-                        for (let i = 0; i < rows.length; i++) {
-                            grid[rows[i]][ci] = nums[i];
-                        }
-                    }
-                    return grid;
-                }
-            }
-            return makeCard(rng);
-        }
-
-        function renderCard(container, idx, grid) {
-            const card = document.createElement('div');
-            card.className = "tcard";
-            card.innerHTML = `<h3><span>Cartella ${idx + 1}</span><span style="color:rgba(255,255,255,.65);font-size:13px">🎅</span></h3>`;
-            const g = document.createElement('div');
-            g.className = 'grid9';
-
-            grid.flat().forEach((val) => {
-                const c = document.createElement('div');
-                c.className = 'cell' + (val == null ? ' empty' : '');
-                c.textContent = val == null ? '' : val;
-                if (val != null) {
-                    c.addEventListener('click', () => c.classList.toggle('marked'));
-                }
-                g.appendChild(c);
-            });
-
-            card.appendChild(g);
-            container.appendChild(card);
-        }
-
-        function generate() {
-            const n = parseInt(document.getElementById('nCards').value, 10);
-            const seedStr = document.getElementById('seed').value.trim() || (Date.now() + "-" + Math.random().toString(16).slice(2));
-            const seedFn = xmur3(seedStr);
-            const base = seedFn();
-
-            const wrap = document.getElementById('cards');
-            wrap.innerHTML = "";
-
-            for (let i = 0; i < n; i++) {
-                const rng = mulberry32((base + i * 1013904223) >>> 0);
-                const grid = makeCard(rng);
-                renderCard(wrap, i, grid);
-            }
-        }
-
-        document.getElementById('gen').onclick = generate;
-        document.getElementById('print').onclick = () => window.print();
-        generate();
-    </script>
+    // genera subito 1 cartella
+    generate();
+  </script>
 </body>
-
 </html>
