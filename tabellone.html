@@ -1,0 +1,327 @@
+<!-- tabellone.html -->
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tabellone – Tombola Natalizia</title>
+  <style>
+    :root{
+      --bg1:#071727; --bg2:#0b2a1a;
+      --stroke: rgba(255,255,255,.18);
+      --txt:#f3f4f6; --mut:#cbd5e1;
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+      --r: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; color:var(--txt);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(900px 520px at 12% 12%, #173b68 0%, transparent 55%),
+                  radial-gradient(820px 520px at 90% 20%, #2a6b3c 0%, transparent 55%),
+                  linear-gradient(180deg, var(--bg1), var(--bg2));
+    }
+    header{max-width:1200px;margin:0 auto;padding:18px 14px}
+    .top{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:10px;align-items:center}
+    .brand b{font-size:18px}
+    .pill{
+      border:1px solid var(--stroke); background: rgba(0,0,0,.18);
+      padding:8px 10px; border-radius:999px; color:var(--mut); font-size:13px
+    }
+    main{max-width:1200px;margin:0 auto;padding:0 14px 60px}
+    .grid{display:grid;gap:14px; grid-template-columns:1fr}
+    @media(min-width:980px){ .grid{grid-template-columns: 420px 1fr} }
+    .card{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.07);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .big{
+      display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+      padding: 10px 12px; border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border:1px solid var(--stroke);
+      margin-bottom:12px;
+    }
+    .last{font-size:62px; font-weight:900; letter-spacing:-1px; line-height:1}
+    .label{color:var(--mut); font-size:13px}
+    .smorfia{margin-top:6px; font-size:16px}
+    .controls{display:flex;flex-wrap:wrap;gap:10px}
+    button{
+      cursor:pointer; border:1px solid rgba(255,255,255,.22);
+      border-radius:14px; padding:12px 12px;
+      font-weight:900; letter-spacing:.2px;
+      background: rgba(255,255,255,.10); color:var(--txt);
+      box-shadow: 0 12px 30px rgba(0,0,0,.22);
+    }
+    button.primary{background: linear-gradient(180deg, #ff7a87, #ff4156); border-color: rgba(255,255,255,.20); color:#0b1020}
+    button.gold{background: linear-gradient(180deg, #ffe7a1, #f6d365); color:#0b1020}
+    button.danger{background: rgba(255,90,107,.12); border-color: rgba(255,90,107,.35)}
+    button:disabled{opacity:.55; cursor:not-allowed}
+    .hint{color:var(--mut); font-size:13px; margin-top:10px; line-height:1.4}
+    .board{
+      display:grid;
+      grid-template-columns: repeat(10, minmax(40px, 1fr));
+      gap:8px;
+    }
+    .cell{
+      aspect-ratio:1/1;
+      display:flex; align-items:center; justify-content:center;
+      border-radius: 14px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.06);
+      font-weight:900;
+      position:relative;
+      user-select:none;
+    }
+    .cell.drawn{
+      background: linear-gradient(180deg, rgba(55,211,155,.26), rgba(55,211,155,.12));
+      border-color: rgba(55,211,155,.45);
+    }
+    .cell.last::after{
+      content:"✨";
+      position:absolute; top:-10px; right:-10px;
+      font-size:18px;
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,.35));
+    }
+    .row2{display:grid; gap:14px; grid-template-columns:1fr}
+    @media(min-width:980px){ .row2{grid-template-columns: 1fr 1fr} }
+    .list{
+      display:flex; flex-wrap:wrap; gap:8px;
+      max-height: 210px; overflow:auto; padding-right:6px;
+    }
+    .chip{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      padding:6px 10px; border-radius:999px;
+      font-weight:800; color:var(--txt)
+    }
+    .snow{position:fixed; inset:0; pointer-events:none; overflow:hidden}
+    .flake{
+      position:absolute; top:-10px; width:8px; height:8px; border-radius:50%;
+      background: rgba(255,255,255,.9);
+      box-shadow: 0 0 12px rgba(255,255,255,.35);
+      opacity:.85;
+      animation: fall linear infinite;
+    }
+    @keyframes fall{ to{ transform: translate3d(var(--dx), 110vh, 0); } }
+  </style>
+</head>
+<body>
+  <div class="snow" id="snow"></div>
+
+  <header>
+    <div class="top">
+      <div class="brand">
+        <div style="font-size:22px">🎄</div>
+        <div>
+          <b>Tabellone</b>
+          <div class="pill">Spazio = Estrai • Z = Undo • R = Reset</div>
+        </div>
+      </div>
+      <a class="pill" href="./index.html" style="text-decoration:none;color:inherit">← Home</a>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <div class="big">
+        <div>
+          <div class="label">Ultimo numero</div>
+          <div class="last" id="last">—</div>
+          <div class="smorfia" id="smorfia">Pronto a iniziare ✨</div>
+        </div>
+        <div style="text-align:right">
+          <div class="label">Estratti</div>
+          <div style="font-size:28px;font-weight:900" id="count">0 / 90</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="primary" id="draw">🎱 Estrai numero</button>
+        <button class="gold" id="undo" disabled>↩️ Undo</button>
+        <button class="danger" id="reset">🧨 Reset</button>
+      </div>
+
+      <div class="hint">
+        Suggerimento: F11 (schermo intero) e condividi lo schermo in Zoom/Meet/Teams.
+      </div>
+
+      <div class="row2" style="margin-top:14px">
+        <div class="card" style="box-shadow:none">
+          <div class="label" style="margin-bottom:8px">Storico (ordine estrazione)</div>
+          <div class="list" id="history"></div>
+        </div>
+        <div class="card" style="box-shadow:none">
+          <div class="label" style="margin-bottom:8px">Estratti (ordinati)</div>
+          <div class="list" id="sorted"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="label" style="margin-bottom:10px">Tabellone 1–90</div>
+      <div class="board" id="board"></div>
+    </section>
+  </main>
+
+  <script>
+    const snow = document.getElementById('snow');
+    const N = 50;
+    for(let i=0;i<N;i++){
+      const f = document.createElement('div');
+      f.className = 'flake';
+      const x = Math.random()*100;
+      const size = 4 + Math.random()*7;
+      const dur = 8 + Math.random()*14;
+      const dx = (Math.random()*2-1) * 140 + "px";
+      f.style.left = x + "vw";
+      f.style.width = size+"px";
+      f.style.height = size+"px";
+      f.style.animationDuration = dur+"s";
+      f.style.setProperty('--dx', dx);
+      f.style.opacity = (0.35 + Math.random()*0.6).toFixed(2);
+      f.style.filter = `blur(${(Math.random()*0.7).toFixed(2)}px)`;
+      f.style.animationDelay = (-Math.random()*dur) + "s";
+      snow.appendChild(f);
+    }
+
+    // Smorfia "base" (puoi sostituirla se vuoi)
+    const SMORFIA = [
+      "",
+      "L'Italia","La bambina","La gatta","Il maiale","La mano","Quella che guarda in terra","Il vaso","La Madonna","La figliolanza",
+      "I fagioli","I topolini","Il soldato","Sant'Antonio","L'ubriaco","Il ragazzo","Il sedere","La disgrazia","Il sangue","La risata",
+      "La festa","La donna nuda","Il pazzo","Lo scemo","Le guardie","Natale","Anna","Il pitale","I seni","Il padre dei bambini",
+      "Le palle del tenente","Il padrone di casa","Il capitone","Gli anni di Cristo","La testa","L'uccellino","Le nacchere","Il monaco","Le botte",
+      "Il cappello","La noia","Il coltello","Il caffè","La donna al balcone","La prigione","Il vino buono","Il denaro","Il morto che parla",
+      "Il morto","Il pane","Il giardino","La mamma","Il vecchio","Il cappotto","La musica","La caduta","Il gobbo","Il pacco",
+      "I peli","Il lamento","Il cacciatore","Il pianto","Il morto ammazzato","La sposa","Le lacrime","La zuppa cotta","Sottosopra",
+      "Il palazzo","L'ommo 'e merda","Il ponte","L'ospedale","La casa","I diavoli","La fontana","La lanterna","La meraviglia",
+      "La puttana","Il ladro","La bocca","I piedi","La tavola imbandita","Il re","Le donne","I fiori","Il maltempo",
+      "La chiesa","Le anime del purgatorio","La bottega","I pidocchi","Il buon cuore","I bambini","La paura","La festa grande","La fortuna"
+    ];
+
+    const LS_KEY = "tombola_natale_state_v1";
+    const state = loadState() || { drawn: [], last: null };
+
+    const elBoard = document.getElementById('board');
+    const elLast = document.getElementById('last');
+    const elSm = document.getElementById('smorfia');
+    const elCount = document.getElementById('count');
+    const elHist = document.getElementById('history');
+    const elSorted = document.getElementById('sorted');
+
+    const btnDraw = document.getElementById('draw');
+    const btnUndo = document.getElementById('undo');
+    const btnReset = document.getElementById('reset');
+
+    const cells = [];
+    for(let n=1;n<=90;n++){
+      const d = document.createElement('div');
+      d.className = 'cell';
+      d.textContent = n;
+      d.dataset.n = n;
+      elBoard.appendChild(d);
+      cells[n] = d;
+    }
+
+    function beep(){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = "triangle";
+        o.frequency.value = 880;
+        g.gain.value = 0.06;
+        o.start();
+        setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
+      }catch(e){}
+    }
+
+    function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+    function loadState(){
+      try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ return null; }
+    }
+
+    function render(){
+      for(let n=1;n<=90;n++){
+        cells[n].classList.remove('drawn','last');
+      }
+      for(const n of state.drawn){
+        cells[n].classList.add('drawn');
+      }
+      if(state.last){
+        cells[state.last].classList.add('last');
+        elLast.textContent = state.last;
+        elSm.textContent = `💬 Smorfia: ${SMORFIA[state.last] || "—"}`;
+      } else {
+        elLast.textContent = "—";
+        elSm.textContent = "Pronto a iniziare ✨";
+      }
+      elCount.textContent = `${state.drawn.length} / 90`;
+
+      elHist.innerHTML = "";
+      state.drawn.forEach(n=>{
+        const c = document.createElement('div');
+        c.className = 'chip';
+        c.textContent = n;
+        elHist.appendChild(c);
+      });
+
+      elSorted.innerHTML = "";
+      [...state.drawn].sort((a,b)=>a-b).forEach(n=>{
+        const c = document.createElement('div');
+        c.className = 'chip';
+        c.textContent = n;
+        elSorted.appendChild(c);
+      });
+
+      btnUndo.disabled = state.drawn.length === 0;
+      btnDraw.disabled = state.drawn.length >= 90;
+    }
+
+    function draw(){
+      if(state.drawn.length >= 90) return;
+      let n;
+      do { n = Math.floor(Math.random()*90)+1; } while(state.drawn.includes(n));
+      state.drawn.push(n);
+      state.last = n;
+      saveState();
+      beep();
+      render();
+    }
+
+    function undo(){
+      if(state.drawn.length === 0) return;
+      state.drawn.pop();
+      state.last = state.drawn[state.drawn.length-1] || null;
+      saveState();
+      render();
+    }
+
+    function resetAll(){
+      if(!confirm("Reset totale? Cancello estrazioni e storico.")) return;
+      state.drawn = [];
+      state.last = null;
+      saveState();
+      render();
+    }
+
+    btnDraw.onclick = draw;
+    btnUndo.onclick = undo;
+    btnReset.onclick = resetAll;
+
+    window.addEventListener('keydown', (e)=>{
+      if(e.key === ' '){ e.preventDefault(); draw(); }
+      if(e.key.toLowerCase() === 'z'){ undo(); }
+      if(e.key.toLowerCase() === 'r'){ resetAll(); }
+    });
+
+    render();
+  </script>
+</body>
+</html>
