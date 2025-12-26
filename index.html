@@ -1,160 +1,274 @@
 <!-- index.html -->
 <!doctype html>
 <html lang="it">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tombola Natalizia</title>
-  <style>
-    :root{
-      --bg1:#081a2b; --bg2:#0b2b1b;
-      --card: rgba(255,255,255,.08);
-      --stroke: rgba(255,255,255,.18);
-      --txt:#f3f4f6; --mut:#cbd5e1;
-      --gold:#f6d365; --red:#ff5a6b; --green:#37d39b;
-      --shadow: 0 18px 50px rgba(0,0,0,.35);
-      --r: 22px;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; min-height:100vh; color:var(--txt);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: radial-gradient(1100px 650px at 10% 10%, #173b68 0%, transparent 55%),
-                  radial-gradient(900px 500px at 90% 20%, #2a6b3c 0%, transparent 55%),
-                  linear-gradient(180deg, var(--bg1), var(--bg2));
-      overflow-x:hidden;
-    }
-    .wrap{max-width:980px;margin:0 auto;padding:28px 18px 70px}
-    .hero{
-      position:relative;
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
-      border-radius: var(--r);
-      box-shadow: var(--shadow);
-      padding: 26px;
-      overflow:hidden;
-    }
-    .badge{
-      display:inline-flex; gap:10px; align-items:center;
-      padding:8px 12px; border-radius:999px;
-      border:1px solid var(--stroke); background: rgba(0,0,0,.18);
-      color: var(--mut); font-size:14px;
-    }
-    h1{margin:14px 0 8px; font-size: clamp(30px, 4vw, 44px); line-height:1.05}
-    .sub{color:var(--mut); margin:0 0 16px; max-width:70ch}
-    .grid{display:grid; grid-template-columns:1fr; gap:14px; margin-top:18px}
-    @media(min-width:820px){ .grid{grid-template-columns:1fr 1fr} }
-    .card{
-      border:1px solid var(--stroke);
-      background: rgba(255,255,255,.06);
-      border-radius: var(--r);
-      padding: 18px;
-    }
-    .ctaRow{display:flex; gap:12px; flex-wrap:wrap; margin-top:14px}
-    a.btn{
-      text-decoration:none; color:#0b1020;
-      padding:12px 14px; border-radius:14px;
-      font-weight:800; letter-spacing:.2px;
-      display:inline-flex; gap:10px; align-items:center;
-      border:1px solid rgba(255,255,255,.22);
-      box-shadow: 0 12px 30px rgba(0,0,0,.25);
-      user-select:none;
-    }
-    .btn.red{background: linear-gradient(180deg, #ff7a87, #ff4156)}
-    .btn.gold{background: linear-gradient(180deg, #ffe7a1, #f6d365)}
-    .note{font-size:14px; color:var(--mut); line-height:1.55}
-    ul{margin:10px 0 0 18px; color:var(--mut)}
-    .orn{
-      position:absolute; inset:-120px -120px auto auto;
-      width:360px; height:360px; border-radius:50%;
-      background: radial-gradient(circle at 35% 30%, rgba(246,211,101,.7), transparent 50%),
-                  radial-gradient(circle at 60% 70%, rgba(255,90,107,.55), transparent 55%),
-                  radial-gradient(circle at 30% 75%, rgba(55,211,155,.35), transparent 55%);
-      opacity:.65;
-      transform: rotate(20deg);
-      pointer-events:none;
-    }
-    .snow{position:fixed; inset:0; pointer-events:none; overflow:hidden}
-    .flake{
-      position:absolute; top:-10px; width:8px; height:8px; border-radius:50%;
-      background: rgba(255,255,255,.9);
-      box-shadow: 0 0 12px rgba(255,255,255,.35);
-      opacity:.85;
-      animation: fall linear infinite;
-    }
-    @keyframes fall{
-      to{ transform: translate3d(var(--dx), 110vh, 0); }
-    }
-    footer{margin-top:20px; color:rgba(255,255,255,.55); font-size:13px}
-    code{background:rgba(0,0,0,.22); padding:2px 6px; border-radius:8px; border:1px solid rgba(255,255,255,.14)}
-  </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Tombola Natalizia</title>
+    <style>
+        :root {
+            --bg1: #0b1020;
+            --bg2: #071a10;
+
+            --card: rgba(255, 255, 255, .10);
+            --stroke: rgba(255, 255, 255, .25);
+
+            --txt: #ffffff;
+            --mut: rgba(255, 255, 255, .80);
+
+            --red: #ff1f3d;
+            /* rosso vivo */
+            --green: #00d26a;
+            /* verde vivo */
+            --gold: #ffd000;
+            /* giallo vivo */
+            --white: #ffffff;
+
+            --shadow: 0 22px 60px rgba(0, 0, 0, .45);
+            --r: 22px;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--txt);
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            background:
+                radial-gradient(900px 520px at 10% 10%, rgba(255, 31, 61, .45) 0%, transparent 55%),
+                radial-gradient(900px 520px at 90% 20%, rgba(0, 210, 106, .40) 0%, transparent 55%),
+                radial-gradient(800px 500px at 50% 0%, rgba(255, 208, 0, .35) 0%, transparent 60%),
+                linear-gradient(180deg, var(--bg1), var(--bg2));
+
+            overflow-x: hidden;
+        }
+
+        .wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 28px 18px 70px
+        }
+
+        .hero {
+            position: relative;
+            border: 1px solid var(--stroke);
+            background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .06));
+            border-radius: var(--r);
+            box-shadow: var(--shadow);
+            padding: 26px;
+            overflow: hidden;
+        }
+
+        .badge {
+            display: inline-flex;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--stroke);
+            background: rgba(0, 0, 0, .18);
+            color: var(--mut);
+            font-size: 14px;
+        }
+
+        h1 {
+            margin: 14px 0 8px;
+            font-size: clamp(30px, 4vw, 44px);
+            line-height: 1.05
+        }
+
+        .sub {
+            color: var(--mut);
+            margin: 0 0 16px;
+            max-width: 70ch
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+            margin-top: 18px
+        }
+
+        @media(min-width:820px) {
+            .grid {
+                grid-template-columns: 1fr 1fr
+            }
+        }
+
+        .card {
+            border: 1px solid var(--stroke);
+            background: rgba(255, 255, 255, .06);
+            border-radius: var(--r);
+            padding: 18px;
+        }
+
+        .ctaRow {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 14px
+        }
+
+        a.btn {
+            text-decoration: none;
+            color: #0b1020;
+            padding: 12px 14px;
+            border-radius: 14px;
+            font-weight: 800;
+            letter-spacing: .2px;
+            display: inline-flex;
+            gap: 10px;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, .22);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .25);
+            user-select: none;
+        }
+
+        .btn.red {
+            background: linear-gradient(180deg, #ff7a87, #ff4156)
+        }
+
+        .btn.gold {
+            background: linear-gradient(180deg, #ffe7a1, #f6d365)
+        }
+
+        .note {
+            font-size: 14px;
+            color: var(--mut);
+            line-height: 1.55
+        }
+
+        ul {
+            margin: 10px 0 0 18px;
+            color: var(--mut)
+        }
+
+        .orn {
+            position: absolute;
+            inset: -120px -120px auto auto;
+            width: 360px;
+            height: 360px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, rgba(246, 211, 101, .7), transparent 50%),
+                radial-gradient(circle at 60% 70%, rgba(255, 90, 107, .55), transparent 55%),
+                radial-gradient(circle at 30% 75%, rgba(55, 211, 155, .35), transparent 55%);
+            opacity: .65;
+            transform: rotate(20deg);
+            pointer-events: none;
+        }
+
+        .snow {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden
+        }
+
+        .flake {
+            position: absolute;
+            top: -10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .9);
+            box-shadow: 0 0 12px rgba(255, 255, 255, .35);
+            opacity: .85;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translate3d(var(--dx), 110vh, 0);
+            }
+        }
+
+        footer {
+            margin-top: 20px;
+            color: rgba(255, 255, 255, .55);
+            font-size: 13px
+        }
+
+        code {
+            background: rgba(0, 0, 0, .22);
+            padding: 2px 6px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, .14)
+        }
+    </style>
 </head>
+
 <body>
-  <div class="snow" id="snow"></div>
+    <div class="snow" id="snow"></div>
 
-  <div class="wrap">
-    <div class="hero">
-      <div class="orn"></div>
-      <div class="badge">🎄 Tombola Natalizia • 100% GitHub Pages • Zero backend</div>
-      <h1>Tabellone condiviso + cartelle sui telefoni</h1>
-      <p class="sub">
-        Un host estrae i numeri sul <b>Tabellone</b> e condivide lo schermo in Zoom/Meet/Teams.
-        I giocatori aprono le <b>Cartelle</b> e marcano con un tocco.
-      </p>
+    <div class="wrap">
+        <div class="hero">
+            <div class="orn"></div>
+            <div class="badge">🎄 Tombola Natalizia • 100% GitHub Pages • Zero backend</div>
+            <h1>Tabellone condiviso + cartelle sui telefoni</h1>
+            <p class="sub">
+                Un host estrae i numeri sul <b>Tabellone</b> e condivide lo schermo in Zoom/Meet/Teams.
+                I giocatori aprono le <b>Cartelle</b> e marcano con un tocco.
+            </p>
 
-      <div class="ctaRow">
-        <a class="btn red" href="./tabellone.html">🎱 Apri Tabellone (Host)</a>
-        <a class="btn gold" href="./cartelle.html">🧾 Apri Cartelle (Giocatori)</a>
-      </div>
+            <div class="ctaRow">
+                <a class="btn red" href="./tabellone.html">🎱 Apri Tabellone (Host)</a>
+                <a class="btn gold" href="./cartelle.html">🧾 Apri Cartelle (Giocatori)</a>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2 style="margin:0 0 8px">Come si gioca (online)</h2>
+                <div class="note">
+                    <ul>
+                        <li>L’host apre <b>Tabellone</b> e clicca <b>Estrai</b>.</li>
+                        <li>Condivide lo schermo in una videochiamata.</li>
+                        <li>I giocatori aprono <b>Cartelle</b> su smartphone/PC e marcano.</li>
+                        <li>Per i premi: chi dichiara per primo (chat / mano alzata) vince.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card">
+                <h2 style="margin:0 0 8px">Tip pratici</h2>
+                <div class="note">
+                    <ul>
+                        <li>Host: usa <code>F11</code> (fullscreen) e <code>Spazio</code> per estrarre.</li>
+                        <li>Le cartelle sono locali: ogni giocatore marca sul proprio dispositivo.</li>
+                        <li>Il tabellone mostra anche <b>La Smorfia</b> associata ai numeri.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <footer>Made for Christmas vibes ✨</footer>
     </div>
 
-    <div class="grid">
-      <div class="card">
-        <h2 style="margin:0 0 8px">Come si gioca (online)</h2>
-        <div class="note">
-          <ul>
-            <li>L’host apre <b>Tabellone</b> e clicca <b>Estrai</b>.</li>
-            <li>Condivide lo schermo in una videochiamata.</li>
-            <li>I giocatori aprono <b>Cartelle</b> su smartphone/PC e marcano.</li>
-            <li>Per i premi: chi dichiara per primo (chat / mano alzata) vince.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="card">
-        <h2 style="margin:0 0 8px">Tip pratici</h2>
-        <div class="note">
-          <ul>
-            <li>Host: usa <code>F11</code> (fullscreen) e <code>Spazio</code> per estrarre.</li>
-            <li>Le cartelle sono locali: ogni giocatore marca sul proprio dispositivo.</li>
-            <li>Il tabellone mostra anche <b>La Smorfia</b> associata ai numeri.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <footer>Made for Christmas vibes ✨</footer>
-  </div>
-
-  <script>
-    const snow = document.getElementById('snow');
-    const N = 45;
-    for(let i=0;i<N;i++){
-      const f = document.createElement('div');
-      f.className = 'flake';
-      const x = Math.random()*100;
-      const size = 4 + Math.random()*7;
-      const dur = 8 + Math.random()*14;
-      const dx = (Math.random()*2-1) * 140 + "px";
-      f.style.left = x + "vw";
-      f.style.width = size+"px";
-      f.style.height = size+"px";
-      f.style.animationDuration = dur+"s";
-      f.style.setProperty('--dx', dx);
-      f.style.opacity = (0.35 + Math.random()*0.6).toFixed(2);
-      f.style.filter = `blur(${(Math.random()*0.7).toFixed(2)}px)`;
-      f.style.animationDelay = (-Math.random()*dur) + "s";
-      snow.appendChild(f);
-    }
-  </script>
+    <script>
+        const snow = document.getElementById('snow');
+        const N = 45;
+        for (let i = 0; i < N; i++) {
+            const f = document.createElement('div');
+            f.className = 'flake';
+            const x = Math.random() * 100;
+            const size = 4 + Math.random() * 7;
+            const dur = 8 + Math.random() * 14;
+            const dx = (Math.random() * 2 - 1) * 140 + "px";
+            f.style.left = x + "vw";
+            f.style.width = size + "px";
+            f.style.height = size + "px";
+            f.style.animationDuration = dur + "s";
+            f.style.setProperty('--dx', dx);
+            f.style.opacity = (0.35 + Math.random() * 0.6).toFixed(2);
+            f.style.filter = `blur(${(Math.random() * 0.7).toFixed(2)}px)`;
+            f.style.animationDelay = (-Math.random() * dur) + "s";
+            snow.appendChild(f);
+        }
+    </script>
 </body>
+
 </html>
