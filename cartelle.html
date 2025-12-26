@@ -275,7 +275,7 @@
   <div class="snow" id="snow"></div>
 
   <div class="wrap">
-    <header>
+<!--     <header>
       <div class="top">
         <div class="brand">
           <div style="font-size:24px">🧾</div>
@@ -286,25 +286,26 @@
         </div>
         <a class="pill" href="./index.html">← Home</a>
       </div>
-    </header>
+    </header> -->
 
     <main>
       <div class="card">
         <div class="controls">
           <div class="label">Quante cartelle?</div>
-
+          
           <div class="btnRow" id="qtyRow">
             <button class="qtyBtn" data-n="1">1</button>
-            <button class="qtyBtn" data-n="2">2</button>
+            <button class="qtyBtn active" data-n="2">2</button>
             <button class="qtyBtn" data-n="3">3</button>
-            <button class="qtyBtn active" data-n="4">4</button>
+            <button class="qtyBtn" data-n="4">4</button>
           </div>
 
           <button class="genBtn" id="gen">🎄 Genera cartelle</button>
+          <button class="genBtn"> <a class="genBtn" href="./index.html">← Home</a></button>
 
-          <div class="note">
+          <!-- <div class="note">
             Le cartelle vengono generate casualmente ad ogni click su “Genera cartelle”.
-          </div>
+          </div> -->
         </div>
       </div>
 
@@ -434,7 +435,7 @@
       container.appendChild(card);
     }
 
-    let selectedN = 4; // default 4
+    let selectedN =2; // default 2
 
     // bottoni 1-4
     const qtyRow = document.getElementById('qtyRow');
