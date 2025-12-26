@@ -1,4 +1,4 @@
-<!-- cartelle.html (mobile-friendly, centrato, bottoni 1-4, no seed, numeri più visibili) -->
+<!-- cartelle.html (mobile-friendly, centrato, 4 cartelle, niente stampa, genera centrato, cartelle compatte) -->
 <!doctype html>
 <html lang="it">
 <head>
@@ -22,14 +22,14 @@
       --r: 18px;
 
       --bean: rgba(215,0,27,.22);
-      --beanStroke: rgba(215,0,27,.58);
+      --beanStroke: rgba(215,0,27,.60);
     }
 
     *{ box-sizing:border-box; }
 
     body{
       margin:0;
-      min-height: 100svh; /* meglio su mobile */
+      min-height: 100svh;
       color:var(--txt);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background:
@@ -38,36 +38,34 @@
         radial-gradient(900px 700px at 70% 90%, rgba(255,255,255,.22) 0%, transparent 62%),
         linear-gradient(135deg, var(--bgA), var(--bgB));
 
-      /* centro contenuto */
+      /* centra contenuto nello schermo */
       display:flex;
       justify-content:center;
       align-items:center;
 
-      /* respiro su telefoni */
-      padding: 16px 0;
-
+      padding: 14px 0;
       overflow-x:hidden;
     }
 
     .wrap{
       width:100%;
       max-width: 1100px;
-      padding: 0 14px 48px;
+      padding: 0 12px 40px;
       display:flex;
       flex-direction:column;
-      gap: 14px;
-      align-items:center; /* centra i blocchi */
+      gap: 12px;
+      align-items:center;
     }
 
     header{
       width:100%;
       max-width: 1100px;
-      padding: 0 14px;
+      padding: 0 12px;
     }
 
     .top{
       display:flex;
-      gap:12px;
+      gap:10px;
       flex-wrap:wrap;
       align-items:center;
       justify-content:space-between;
@@ -78,7 +76,6 @@
       gap:10px;
       align-items:center;
     }
-
     .brand b{ font-size:18px; }
 
     .pill{
@@ -89,15 +86,16 @@
       color: rgba(0,0,0,.68);
       font-size:13px;
       line-height:1.2;
+      text-decoration:none;
     }
 
     main{
       width:100%;
       max-width:1100px;
-      padding: 0 14px;
+      padding: 0 12px;
       display:flex;
       flex-direction:column;
-      gap: 14px;
+      gap: 12px;
       align-items:center;
     }
 
@@ -107,7 +105,7 @@
       background: var(--card);
       border-radius: var(--r);
       box-shadow: var(--shadow);
-      padding: 14px;
+      padding: 12px;
     }
 
     .controls{
@@ -119,7 +117,7 @@
     }
 
     .label{
-      font-weight: 900;
+      font-weight: 1000;
       font-size: 16px;
       color:#111;
     }
@@ -135,19 +133,18 @@
     button{
       border-radius: 16px;
       border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.90);
+      background: rgba(255,255,255,.92);
       color: #111;
       padding: 12px 14px;
-      font-weight: 900;
+      font-weight: 1000;
       cursor:pointer;
       box-shadow: 0 14px 30px rgba(0,0,0,.14);
-      min-height: 48px;
+      min-height: 46px;
       user-select:none;
     }
 
-    /* bottoni quantità cartelle */
     .qtyBtn{
-      min-width: 62px;
+      min-width: 58px;
       font-size: 18px;
     }
     .qtyBtn.active{
@@ -155,23 +152,12 @@
       border-color: rgba(0,0,0,.16);
     }
 
-    /* bottoni azione */
-    .actionRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:center;
-      width:100%;
-      margin-top: 4px;
-    }
-
-    .red{
+    /* bottone genera centrato e grande su mobile */
+    .genBtn{
       background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
       color:#111;
-    }
-    .gold{
-      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
-      color:#111;
+      width: min(520px, 100%);
+      justify-content:center;
     }
 
     .note{
@@ -179,49 +165,50 @@
       font-size: 13px;
       line-height: 1.45;
       text-align:center;
-      margin-top: 4px;
+      margin-top: 2px;
     }
 
     .cards{
       width:100%;
       display:grid;
-      gap:14px;
-      grid-template-columns: 1fr; /* mobile */
+      gap: 10px;
+      grid-template-columns: 1fr; /* mobile: una colonna */
     }
 
-    /* tablet/desktop */
-    @media(min-width: 860px){
+    /* desktop: 2 colonne (4 cartelle = 2x2) */
+    @media(min-width: 880px){
       .cards{ grid-template-columns: 1fr 1fr; }
     }
 
     .tcard{
       border:1px solid var(--stroke);
-      background: rgba(255,255,255,.88);
+      background: rgba(255,255,255,.90);
       border-radius: var(--r);
-      padding: 12px;
+      padding: 8px;              /* compatto */
       overflow:hidden;
       box-shadow: 0 18px 40px rgba(0,0,0,.12);
     }
 
     .tcard h3{
-      margin:0 0 10px;
+      margin:0 0 6px;            /* compatto */
       display:flex;
       justify-content:space-between;
       align-items:baseline;
+      font-size: 14px;
     }
 
     .grid9{
       display:grid;
       grid-template-columns: repeat(9, 1fr);
-      gap: 8px;
+      gap: 5px;                  /* compatto */
     }
 
-    /* NUMERI MOLTO PIÙ VISIBILI */
+    /* NUMERI GRANDI ma cartella bassa */
     .cell{
-      height: 56px;                 /* più alto */
-      border-radius: 16px;
+      height: 40px;              /* più basso per 4 cartelle su schermo */
+      border-radius: 14px;
       border: 2px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.95);
+      background: rgba(255,255,255,.96);
       display:flex;
       align-items:center;
       justify-content:center;
@@ -231,21 +218,22 @@
       cursor:pointer;
       color:#0b0b0b;
 
-      font-size: clamp(20px, 4.6vw, 28px); /* grande su mobile, ancora grande su desktop */
+      /* font-size: clamp(17px, 4.1vw, 22px); */
+      font-size: clamp(19px, 4.4vw, 26px);
       letter-spacing: .2px;
 
       box-shadow: 0 10px 22px rgba(0,0,0,.08);
     }
 
     .cell.empty{
-      background: rgba(255,255,255,.65);
+      background: rgba(255,255,255,.70);
       cursor:default;
       border-color: rgba(0,0,0,.06);
       box-shadow:none;
     }
 
     .cell.marked{
-      background: linear-gradient(180deg, rgba(215,0,27,.32), rgba(215,0,27,.16));
+      background: linear-gradient(180deg, rgba(215,0,27,.30), rgba(215,0,27,.14));
       border-color: rgba(215,0,27,.62);
       box-shadow: 0 12px 26px rgba(215,0,27,.14);
     }
@@ -253,32 +241,18 @@
     .cell.marked::after{
       content:"🫘";
       position:absolute;
-      right:8px;
-      top:6px;
-      font-size: 18px;
+      right:6px;
+      top:4px;
+      font-size: 16px;
       opacity:.95;
       filter: drop-shadow(0 10px 14px rgba(0,0,0,.22));
-    }
-
-    /* Stampa */
-    @media print{
-      header, .card, .note { display:none !important; }
-      body{ background:#fff !important; color:#000; display:block; padding:0; }
-      main{ max-width:none; padding:0; }
-      .tcard{ break-inside: avoid; background:#fff; border:1px solid #ddd; box-shadow:none; }
-      .cell{ background:#fff; border:1px solid #bbb; color:#000; box-shadow:none; font-size:18px; }
-      .cell.empty{ background:#fff; border:1px solid #eee; }
-      .cell.marked::after{ content:""; }
     }
 
     /* Glitter snow */
     .snow{ position:fixed; inset:0; pointer-events:none; overflow:hidden; }
     .flake{
-      position:absolute;
-      top:-10px;
-      width:7px;
-      height:7px;
-      border-radius:50%;
+      position:absolute; top:-10px;
+      width:7px; height:7px; border-radius:50%;
       background: rgba(255,255,255,.95);
       box-shadow: 0 0 16px rgba(255,255,255,.45);
       opacity:.9;
@@ -307,10 +281,10 @@
           <div style="font-size:24px">🧾</div>
           <div>
             <b>Cartelle</b>
-            <div class="pill">Tocca un numero per mettere/togliere il fagiolo</div>
+            <div class="pill" style="display:inline-block;margin-top:4px">Tocca un numero per mettere/togliere il fagiolo</div>
           </div>
         </div>
-        <a class="pill" href="./index.html" style="text-decoration:none;color:inherit">← Home</a>
+        <a class="pill" href="./index.html">← Home</a>
       </div>
     </header>
 
@@ -320,16 +294,13 @@
           <div class="label">Quante cartelle?</div>
 
           <div class="btnRow" id="qtyRow">
-            <button class="qtyBtn active" data-n="1">1</button>
+            <button class="qtyBtn" data-n="1">1</button>
             <button class="qtyBtn" data-n="2">2</button>
             <button class="qtyBtn" data-n="3">3</button>
-            <button class="qtyBtn" data-n="4">4</button>
+            <button class="qtyBtn active" data-n="4">4</button>
           </div>
 
-          <div class="actionRow">
-            <button class="red" id="gen">🎄 Genera cartelle</button>
-            <button class="gold" id="print">🖨️ Stampa</button>
-          </div>
+          <button class="genBtn" id="gen">🎄 Genera cartelle</button>
 
           <div class="note">
             Le cartelle vengono generate casualmente ad ogni click su “Genera cartelle”.
@@ -344,7 +315,7 @@
   <script>
     // Glitter snow (meno particelle = meglio su mobile)
     const snow = document.getElementById('snow');
-    const N = 42;
+    const N = 38;
     for(let i=0;i<N;i++){
       const f = document.createElement('div');
       const isGold = Math.random() < 0.22;
@@ -364,9 +335,8 @@
       snow.appendChild(f);
     }
 
-    // RNG (non-seeded) per cartelle sempre diverse
+    // RNG semplice (non-seeded): cartelle sempre diverse
     function rng(){ return Math.random(); }
-
     function pickUnique(arr, k){
       const a = arr.slice();
       const out = [];
@@ -392,8 +362,8 @@
 
     function makeCard(){
       // quante cifre per colonna (1..3), totale 15
-      let counts = Array(9).fill(1); // 9 numeri
-      let remaining = 6; // arrivare a 15
+      let counts = Array(9).fill(1);
+      let remaining = 6;
       while(remaining > 0){
         const c = Math.floor(rng()*9);
         if(counts[c] < 3){ counts[c]++; remaining--; }
@@ -446,7 +416,7 @@
     function renderCard(container, idx, grid){
       const card = document.createElement('div');
       card.className = "tcard";
-      card.innerHTML = `<h3><span>Cartella ${idx+1}</span><span style="color:rgba(0,0,0,.55);font-size:13px">🎅</span></h3>`;
+      card.innerHTML = `<h3><span>Cartella ${idx+1}</span><span style="color:rgba(0,0,0,.55)">🎅</span></h3>`;
       const g = document.createElement('div');
       g.className = 'grid9';
 
@@ -464,7 +434,7 @@
       container.appendChild(card);
     }
 
-    let selectedN = 1;
+    let selectedN = 4; // default 4
 
     // bottoni 1-4
     const qtyRow = document.getElementById('qtyRow');
@@ -483,14 +453,13 @@
         const grid = makeCard();
         renderCard(wrap, i, grid);
       }
-      // scroll morbido verso le cartelle su mobile
+      // scroll morbido verso le cartelle (utile su mobile)
       wrap.scrollIntoView({behavior:'smooth', block:'start'});
     }
 
     document.getElementById('gen').onclick = generate;
-    document.getElementById('print').onclick = () => window.print();
 
-    // genera subito 1 cartella
+    // genera subito 4 cartelle
     generate();
   </script>
 </body>
