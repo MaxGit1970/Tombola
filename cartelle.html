@@ -1,4 +1,4 @@
-<!-- cartelle.html (mobile-friendly, centrato, 4 cartelle, niente stampa, genera centrato, cartelle compatte) -->
+<!-- cartelle.html (mobile-friendly, centrato, max 4 cartelle, click 1-4 genera, + / - per dimensione numeri) -->
 <!doctype html>
 <html lang="it">
 <head>
@@ -11,18 +11,17 @@
       --bgA:#ff1e3a;
       --bgB:#c4001a;
       --gold:#ffcc2e;
-      --green:#0a8f3f;
 
       --txt:#141414;
-      --mut:#2e2e2e;
-
       --card: rgba(255,255,255,.86);
       --stroke: rgba(255,255,255,.78);
       --shadow: 0 20px 55px rgba(0,0,0,.18);
       --r: 18px;
 
-      --bean: rgba(215,0,27,.22);
-      --beanStroke: rgba(215,0,27,.60);
+      /* dimensione numeri (gestita anche via JS) */
+      --numMin: 21px;
+      --numVw: 4.4vw;
+      --numMax: 28px;
     }
 
     *{ box-sizing:border-box; }
@@ -38,7 +37,6 @@
         radial-gradient(900px 700px at 70% 90%, rgba(255,255,255,.22) 0%, transparent 62%),
         linear-gradient(135deg, var(--bgA), var(--bgB));
 
-      /* centra contenuto nello schermo */
       display:flex;
       justify-content:center;
       align-items:center;
@@ -55,38 +53,6 @@
       flex-direction:column;
       gap: 12px;
       align-items:center;
-    }
-
-    header{
-      width:100%;
-      max-width: 1100px;
-      padding: 0 12px;
-    }
-
-    .top{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-    }
-
-    .brand{
-      display:flex;
-      gap:10px;
-      align-items:center;
-    }
-    .brand b{ font-size:18px; }
-
-    .pill{
-      border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.82);
-      padding:8px 10px;
-      border-radius:999px;
-      color: rgba(0,0,0,.68);
-      font-size:13px;
-      line-height:1.2;
-      text-decoration:none;
     }
 
     main{
@@ -118,7 +84,7 @@
 
     .label{
       font-weight: 1000;
-      font-size: 16px;
+      font-size: 18px;
       color:#111;
     }
 
@@ -141,6 +107,7 @@
       box-shadow: 0 14px 30px rgba(0,0,0,.14);
       min-height: 46px;
       user-select:none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .qtyBtn{
@@ -152,60 +119,83 @@
       border-color: rgba(0,0,0,.16);
     }
 
-    /* bottone genera centrato e grande su mobile */
-    .genBtn{
-      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
-      color:#111;
-      width: min(520px, 100%);
+    /* controllo dimensione numeri */
+    .sizeRow{
+      display:flex;
+      gap:10px;
       justify-content:center;
+      align-items:center;
+      flex-wrap:wrap;
+      width:100%;
+      margin-top: 2px;
     }
 
-    .note{
-      color: rgba(0,0,0,.68);
+    .sizeBtn{
+      min-width: 56px;
+      font-size: 20px;
+      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
+      color:#111;
+    }
+
+    .sizeInfo{
+      border:1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.86);
+      border-radius:999px;
+      padding: 8px 12px;
+      font-weight: 900;
       font-size: 13px;
-      line-height: 1.45;
+      color: rgba(0,0,0,.70);
+      min-width: 140px;
       text-align:center;
-      margin-top: 2px;
     }
 
     .cards{
       width:100%;
       display:grid;
       gap: 10px;
-      grid-template-columns: 1fr; /* mobile: una colonna */
+      grid-template-columns: 1fr; /* mobile */
     }
 
-    /* desktop: 2 colonne (4 cartelle = 2x2) */
     @media(min-width: 880px){
-      .cards{ grid-template-columns: 1fr 1fr; }
+      .cards{ grid-template-columns: 1fr 1fr; } /* 2x2 per 4 cartelle */
     }
 
     .tcard{
       border:1px solid var(--stroke);
       background: rgba(255,255,255,.90);
       border-radius: var(--r);
-      padding: 8px;              /* compatto */
+      padding: 8px;
       overflow:hidden;
       box-shadow: 0 18px 40px rgba(0,0,0,.12);
     }
 
-    .tcard h3{
-      margin:0 0 6px;            /* compatto */
-      display:flex;
-      justify-content:space-between;
-      align-items:baseline;
+    /* TITOLO: testo centrato, albero a destra, allineati */
+    .tTitle{
+      margin:0 0 6px;
+      display:grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items:center;
       font-size: 14px;
+      font-weight: 1000;
+      color:#111;
     }
+    .tTitleText{ justify-self:center; }
+    .tSanta{
+      justify-self:end;
+      font-size: 24px;   /* più grosso */
+      line-height: 1;    /* evita che “scenda” */
+      color: rgba(0,0,0,.55);
+    }
+    .tSpacer{ display:block; }
 
     .grid9{
       display:grid;
       grid-template-columns: repeat(9, 1fr);
-      gap: 1px;                  /* compatto */
+      gap: 1px;
     }
 
-    /* NUMERI GRANDI ma cartella bassa */
     .cell{
-      height: 40px;              /* più basso per 4 cartelle su schermo */
+      height: 40px;
       border-radius: 14px;
       border: 2px solid rgba(0,0,0,.12);
       background: rgba(255,255,255,.96);
@@ -218,8 +208,7 @@
       cursor:pointer;
       color:#0b0b0b;
 
-      /* font-size: clamp(17px, 4.1vw, 22px); */
-      font-size: clamp(21px, 4.4vw, 28px);
+      font-size: clamp(var(--numMin), var(--numVw), var(--numMax));
       letter-spacing: .2px;
 
       box-shadow: 0 10px 22px rgba(0,0,0,.08);
@@ -238,15 +227,8 @@
       box-shadow: 0 12px 26px rgba(215,0,27,.14);
     }
 
-    .cell.marked::after{
-      content:"🫘";
-      position:absolute;
-      right:6px;
-      top:4px;
-      font-size: 16px;
-      opacity:.95;
-      filter: drop-shadow(0 10px 14px rgba(0,0,0,.22));
-    }
+    /* niente stelline / icone su cella marcata */
+    .cell.marked::after{ content:""; }
 
     /* Glitter snow */
     .snow{ position:fixed; inset:0; pointer-events:none; overflow:hidden; }
@@ -275,37 +257,23 @@
   <div class="snow" id="snow"></div>
 
   <div class="wrap">
-<!--     <header>
-      <div class="top">
-        <div class="brand">
-          <div style="font-size:24px">🧾</div>
-          <div>
-            <b>Cartelle</b>
-            <div class="pill" style="display:inline-block;margin-top:4px">Tocca un numero per mettere/togliere il fagiolo</div>
-          </div>
-        </div>
-        <a class="pill" href="./index.html">← Home</a>
-      </div>
-    </header> -->
-
     <main>
       <div class="card">
         <div class="controls">
           <div class="label">Quante cartelle?</div>
-          
+
           <div class="btnRow" id="qtyRow">
-            <button class="qtyBtn" data-n="1">1</button>
-            <button class="qtyBtn active" data-n="2">2</button>
+            <button class="qtyBtn active" data-n="1">1</button>
+            <button class="qtyBtn" data-n="2">2</button>
             <button class="qtyBtn" data-n="3">3</button>
             <button class="qtyBtn" data-n="4">4</button>
           </div>
 
-          <button class="genBtn" id="gen">🎄 Genera cartelle</button>
-          <button class="genBtn"> <a class="genBtn" href="./index.html">← Home</a></button>
-
-          <!-- <div class="note">
-            Le cartelle vengono generate casualmente ad ogni click su “Genera cartelle”.
-          </div> -->
+          <div class="sizeRow" aria-label="Dimensione numeri">
+            <button class="sizeBtn" id="minus" aria-label="Diminuisci dimensione">−</button>
+            <div class="sizeInfo" id="sizeInfo"></div>
+            <button class="sizeBtn" id="plus" aria-label="Aumenta dimensione">+</button>
+          </div>
         </div>
       </div>
 
@@ -314,7 +282,7 @@
   </div>
 
   <script>
-    // Glitter snow (meno particelle = meglio su mobile)
+    // Glitter snow
     const snow = document.getElementById('snow');
     const N = 38;
     for(let i=0;i<N;i++){
@@ -336,7 +304,7 @@
       snow.appendChild(f);
     }
 
-    // RNG semplice (non-seeded): cartelle sempre diverse
+    // RNG semplice
     function rng(){ return Math.random(); }
     function pickUnique(arr, k){
       const a = arr.slice();
@@ -348,7 +316,6 @@
       return out;
     }
 
-    // Colonne tombola italiana
     const COLS = [
       {min:1,max:9},
       {min:10,max:19},
@@ -362,7 +329,6 @@
     ];
 
     function makeCard(){
-      // quante cifre per colonna (1..3), totale 15
       let counts = Array(9).fill(1);
       let remaining = 6;
       while(remaining > 0){
@@ -370,14 +336,12 @@
         if(counts[c] < 3){ counts[c]++; remaining--; }
       }
 
-      // numeri per colonna
       const colNums = counts.map((cnt, ci)=>{
         const range = [];
         for(let n=COLS[ci].min; n<=COLS[ci].max; n++) range.push(n);
         return pickUnique(range, cnt).sort((a,b)=>a-b);
       });
 
-      // assegna alle 3 righe (5 numeri per riga)
       for(let attempt=0; attempt<250; attempt++){
         const rowCounts = [0,0,0];
         const placement = Array(9).fill(null).map(()=>[]);
@@ -417,7 +381,15 @@
     function renderCard(container, idx, grid){
       const card = document.createElement('div');
       card.className = "tcard";
-      card.innerHTML = `<h3><span>Cartella ${idx+1}</span><span style="color:rgba(0,0,0,.55)">🎅</span></h3>`;
+
+      card.innerHTML = `
+        <h3 class="tTitle">
+          <span class="tSpacer"></span>
+          <span class="tTitleText">Cartella ${idx+1}</span>
+          <span class="tSanta">🎄</span>
+        </h3>
+      `;
+
       const g = document.createElement('div');
       g.className = 'grid9';
 
@@ -426,7 +398,7 @@
         c.className = 'cell' + (val==null ? ' empty' : '');
         c.textContent = val==null ? '' : val;
         if(val!=null){
-          c.addEventListener('click', ()=> c.classList.toggle('marked'));
+          c.addEventListener('click', ()=> c.classList.toggle('marked'), {passive:true});
         }
         g.appendChild(c);
       });
@@ -435,32 +407,62 @@
       container.appendChild(card);
     }
 
-    let selectedN =2; // default 2
+    // ---- selezione cartelle + genera al click ----
+    let selectedN = 1;
 
-    // bottoni 1-4
     const qtyRow = document.getElementById('qtyRow');
     qtyRow.addEventListener('click', (e)=>{
       const btn = e.target.closest('button[data-n]');
       if(!btn) return;
+
       selectedN = parseInt(btn.dataset.n, 10);
       qtyRow.querySelectorAll('.qtyBtn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
+
+      generate();
     });
 
     function generate(){
       const wrap = document.getElementById('cards');
       wrap.innerHTML = "";
       for(let i=0;i<selectedN;i++){
-        const grid = makeCard();
-        renderCard(wrap, i, grid);
+        renderCard(wrap, i, makeCard());
       }
-      // scroll morbido verso le cartelle (utile su mobile)
       wrap.scrollIntoView({behavior:'smooth', block:'start'});
     }
 
-    document.getElementById('gen').onclick = generate;
+    // ---- + / - dimensione numeri ----
+    const root = document.documentElement;
+    const sizeInfo = document.getElementById('sizeInfo');
 
-    // genera subito 4 cartelle
+    let numMin = 21;
+    let numMax = 28;
+
+    const STEP = 2;
+    const MIN_MIN = 14;
+    const MAX_MAX = 36;
+
+    function applySize(){
+      root.style.setProperty('--numMin', numMin + 'px');
+      root.style.setProperty('--numMax', numMax + 'px');
+    //   sizeInfo.textContent = `Numeri: ${numMin}–${numMax}px`;
+      sizeInfo.textContent = ``;
+    }
+
+    document.getElementById('plus').addEventListener('click', ()=>{
+      if(numMax + STEP > MAX_MAX) return;
+      numMin += STEP; numMax += STEP;
+      applySize();
+    });
+
+    document.getElementById('minus').addEventListener('click', ()=>{
+      if(numMin - STEP < MIN_MIN) return;
+      numMin -= STEP; numMax -= STEP;
+      applySize();
+    });
+
+    // init
+    applySize();
     generate();
   </script>
 </body>
