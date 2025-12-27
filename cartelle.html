@@ -1,562 +1,477 @@
-<!-- cartelle.html (mobile-friendly, centrato, max 4 cartelle, click 1-4 genera, + / - per dimensione numeri e cartelle) -->
+<!-- cartelle.html (MOBILE-FIRST: default 4 cartelle, dimensioni automatiche massime, barra top a scomparsa con 1-4, niente + / -) -->
 <!doctype html>
 <html lang="it">
-
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Cartelle – Tombola Natalizia</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Cartelle – Tombola Natalizia</title>
 
-    <style>
-        :root {
-            --bgA: #ff1e3a;
-            --bgB: #c4001a;
-            --gold: #ffcc2e;
+  <style>
+    :root{
+      --bgA:#ff1e3a;
+      --bgB:#c4001a;
+      --gold:#ffcc2e;
 
-            --txt: #141414;
-            --card: rgba(255, 255, 255, .86);
-            --stroke: rgba(255, 255, 255, .78);
-            --shadow: 0 20px 55px rgba(0, 0, 0, .18);
-            --r: 18px;
+      --txt:#141414;
+      --stroke: rgba(255,255,255,.78);
+      --shadow: 0 18px 40px rgba(0,0,0,.14);
+      --r: 18px;
 
-            /* dimensione numeri (gestita anche via JS) */
-            --numMin: 21px;
-            --numVw: 4.4vw;
-            --numMax: 28px;
-        }
+      /* top bar */
+      --barH: 64px;
 
-        * {
-            box-sizing: border-box;
-        }
+      /* sizing (calcolato da JS per essere "il più grande possibile") */
+      --cardPad: 8px;
+      --gridGap: 2px;
+      --cellH: 34px;
+      --titleF: 14px;
+      --santaF: 22px;
 
-        body {
-            margin: 0;
-            min-height: 100svh;
-            color: var(--txt);
-            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            background:
-                radial-gradient(1000px 700px at 10% 10%, rgba(255, 255, 255, .30) 0%, transparent 58%),
-                radial-gradient(800px 600px at 90% 12%, rgba(255, 204, 46, .35) 0%, transparent 55%),
-                radial-gradient(900px 700px at 70% 90%, rgba(255, 255, 255, .22) 0%, transparent 62%),
-                linear-gradient(135deg, var(--bgA), var(--bgB));
+      /* font numeri (clamp controllato da JS) */
+      --numMin: 16px;
+      --numVw: 4.0vw;
+      --numMax: 22px;
+    }
 
-            display: flex;
-            justify-content: center;
-            align-items: center;
+    *{ box-sizing:border-box; }
 
-            padding: 14px 0;
-            overflow-x: hidden;
-        }
+    body{
+      margin:0;
+      min-height: 100svh;
+      color:var(--txt);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background:
+        radial-gradient(1000px 700px at 10% 10%, rgba(255,255,255,.30) 0%, transparent 58%),
+        radial-gradient(800px 600px at 90% 12%, rgba(255,204,46,.35) 0%, transparent 55%),
+        radial-gradient(900px 700px at 70% 90%, rgba(255,255,255,.22) 0%, transparent 62%),
+        linear-gradient(135deg, var(--bgA), var(--bgB));
+      overflow-x:hidden;
+    }
 
-        .wrap {
-            width: 100%;
-            max-width: 1100px;
-            padding: 0 12px 40px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: center;
-        }
+    /* Barra fissa (a scomparsa) */
+    .topbar{
+      position: fixed;
+      left: 0; right: 0; top: 0;
+      height: var(--barH);
+      padding: calc(env(safe-area-inset-top) + 8px) 12px 10px;
+      display:flex;
+      justify-content:center;
+      align-items:flex-end;
+      z-index: 50;
+      transition: transform .22s ease;
+      transform: translateY(0);
+    }
+    .topbar.hidden{ transform: translateY(-120%); }
 
-        main {
-            width: 100%;
-            max-width: 1100px;
-            padding: 0 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: center;
-        }
+    .topbarInner{
+      width: min(560px, 100%);
+      border: 1px solid rgba(255,255,255,.65);
+      background: rgba(255,255,255,.88);
+      border-radius: 999px;
+      box-shadow: 0 14px 30px rgba(0,0,0,.16);
+      padding: 8px;
+      display:flex;
+      gap: 10px;
+      justify-content: center;
+      align-items:center;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
 
-        .card {
-            width: 100%;
-            border: 1px solid var(--stroke);
-            background: var(--card);
-            border-radius: var(--r);
-            box-shadow: var(--shadow);
-            padding: 12px;
-        }
+    .qtyBtn{
+      border: 1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.94);
+      color:#111;
+      border-radius: 999px;
+      padding: 10px 14px;
+      min-width: 54px;
+      font-weight: 1000;
+      font-size: 16px;
+      line-height: 1;
+      box-shadow: 0 10px 22px rgba(0,0,0,.10);
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      cursor:pointer;
+    }
+    .qtyBtn.active{
+      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
+      border-color: rgba(0,0,0,.18);
+    }
 
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            align-items: center;
-            text-align: center;
-        }
+    /* layout principale */
+    .wrap{
+      width: 100%;
+      padding: calc(var(--barH) + env(safe-area-inset-top) + 10px) 10px 18px;
+      display:flex;
+      justify-content:center;
+    }
 
-        .label {
-            font-weight: 1000;
-            font-size: 18px;
-            color: #111;
-        }
+    .cards{
+      width: min(980px, 100%);
+      display:grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, 1fr); /* mobile: 2 colonne per vedere 4 cartelle */
+      align-items: start;
+    }
 
-        .btnRow {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            width: 100%;
-        }
+    .tcard{
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.90);
+      border-radius: var(--r);
+      padding: var(--cardPad);
+      overflow:hidden;
+      box-shadow: var(--shadow);
+    }
 
-        button {
-            border-radius: 16px;
-            border: 1px solid rgba(0, 0, 0, .12);
-            background: rgba(255, 255, 255, .92);
-            color: #111;
-            padding: 12px 14px;
-            font-weight: 1000;
-            cursor: pointer;
-            box-shadow: 0 14px 30px rgba(0, 0, 0, .14);
-            min-height: 46px;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
+    /* Titolo: testo centrato, albero a destra, allineati */
+    .tTitle{
+      margin: 0 0 6px;
+      display:grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items:center;
+      font-size: var(--titleF);
+      font-weight: 1000;
+      color:#111;
+    }
+    .tTitleText{ justify-self:center; }
+    .tSanta{
+      justify-self:end;
+      font-size: var(--santaF);
+      line-height: 1;
+      color: rgba(0,0,0,.55);
+    }
+    .tSpacer{ display:block; }
 
-        .qtyBtn {
-            min-width: 58px;
-            font-size: 18px;
-        }
+    .grid9{
+      display:grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: var(--gridGap);
+    }
 
-        .qtyBtn.active {
-            background: linear-gradient(180deg, #ffe17b, #ffcc2e);
-            border-color: rgba(0, 0, 0, .16);
-        }
+    .cell{
+      height: var(--cellH);
+      border-radius: 14px;
+      border: 2px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.96);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight: 1000;
+      user-select:none;
+      position:relative;
+      cursor:pointer;
+      color:#0b0b0b;
+      font-size: clamp(var(--numMin), var(--numVw), var(--numMax));
+      letter-spacing: .2px;
+      box-shadow: 0 8px 18px rgba(0,0,0,.07);
+    }
 
-        /* controllo dimensione numeri */
-        .sizeRow {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-            width: 100%;
-            margin-top: 2px;
-        }
+    .cell.empty{
+      background: rgba(255,255,255,.72);
+      cursor:default;
+      border-color: rgba(0,0,0,.06);
+      box-shadow:none;
+    }
 
-        .sizeBtn {
-            min-width: 56px;
-            font-size: 20px;
-            background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
-            color: #111;
-        }
+    .cell.marked{
+      background: linear-gradient(180deg, rgba(215,0,27,.30), rgba(215,0,27,.14));
+      border-color: rgba(215,0,27,.62);
+      box-shadow: 0 12px 26px rgba(215,0,27,.14);
+    }
 
-        .sizeInfo {
-            border: 1px solid rgba(0, 0, 0, .12);
-            background: rgba(255, 255, 255, .86);
-            border-radius: 999px;
-            padding: 8px 12px;
-            font-weight: 900;
-            font-size: 13px;
-            color: rgba(0, 0, 0, .70);
-            min-width: 140px;
-            text-align: center;
-        }
+    /* niente stelline / icone su cella marcata */
+    .cell.marked::after{ content:""; }
 
-        .cards {
-            width: 100%;
-            display: grid;
-            gap: 10px;
-            grid-template-columns: 1fr;
-            /* mobile */
-        }
+    /* Glitter snow (leggero) */
+    .snow{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
+    .flake{
+      position:absolute; top:-10px;
+      width:6px; height:6px; border-radius:50%;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 0 14px rgba(255,255,255,.45);
+      opacity:.85;
+      animation: fall linear infinite;
+    }
+    .flake.gold{
+      background: rgba(255,204,46,.95);
+      box-shadow: 0 0 14px rgba(255,204,46,.45);
+      opacity:.8;
+    }
+    @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
 
-        @media(min-width: 880px) {
-            .cards {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            /* 2x2 per 4 cartelle */
-        }
-
-        .tcard {
-            border: 1px solid var(--stroke);
-            background: rgba(255, 255, 255, .90);
-            border-radius: var(--r);
-            padding: 8px;
-            overflow: hidden;
-            box-shadow: 0 18px 40px rgba(0, 0, 0, .12);
-        }
-
-        /* TITOLO: testo centrato, albero a destra, allineati */
-        .tTitle {
-            margin: 0 0 6px;
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            font-size: 14px;
-            font-weight: 1000;
-            color: #111;
-        }
-
-        .tTitleText {
-            justify-self: center;
-        }
-
-        .tSanta {
-            justify-self: end;
-            font-size: 24px;
-            /* più grosso */
-            line-height: 1;
-            /* evita che “scenda” */
-            color: rgba(0, 0, 0, .55);
-        }
-
-        .tSpacer {
-            display: block;
-        }
-
-        .grid9 {
-            display: grid;
-            grid-template-columns: repeat(9, 1fr);
-            gap: 1px;
-        }
-
-        .cell {
-            height: 40px;
-            border-radius: 14px;
-            border: 2px solid rgba(0, 0, 0, .12);
-            background: rgba(255, 255, 255, .96);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 1000;
-            user-select: none;
-            position: relative;
-            cursor: pointer;
-            color: #0b0b0b;
-
-            font-size: clamp(var(--numMin), var(--numVw), var(--numMax));
-            letter-spacing: .2px;
-
-            box-shadow: 0 10px 22px rgba(0, 0, 0, .08);
-        }
-
-        .cell.empty {
-            background: rgba(255, 255, 255, .70);
-            cursor: default;
-            border-color: rgba(0, 0, 0, .06);
-            box-shadow: none;
-        }
-
-        .cell.marked {
-            background: linear-gradient(180deg, rgba(215, 0, 27, .30), rgba(215, 0, 27, .14));
-            border-color: rgba(215, 0, 27, .62);
-            box-shadow: 0 12px 26px rgba(215, 0, 27, .14);
-        }
-
-        /* niente stelline / icone su cella marcata */
-        .cell.marked::after {
-            content: "";
-        }
-
-        /* Glitter snow */
-        .snow {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            overflow: hidden;
-        }
-
-        .flake {
-            position: absolute;
-            top: -10px;
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, .95);
-            box-shadow: 0 0 16px rgba(255, 255, 255, .45);
-            opacity: .9;
-            animation: fall linear infinite;
-        }
-
-        .flake.gold {
-            background: rgba(255, 204, 46, .95);
-            box-shadow: 0 0 16px rgba(255, 204, 46, .45);
-            opacity: .85;
-        }
-
-        @keyframes fall {
-            to {
-                transform: translate3d(var(--dx), 110svh, 0);
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .flake {
-                animation: none;
-                opacity: .35;
-            }
-        }
-    </style>
+    @media (prefers-reduced-motion: reduce){
+      .flake{ animation:none; opacity:.30; }
+      .topbar{ transition: none; }
+    }
+  </style>
 </head>
 
 <body>
-    <div class="snow" id="snow"></div>
+  <div class="snow" id="snow"></div>
 
-    <div class="wrap">
-        <main>
-            <div class="card">
-                <div class="controls">
-                    <div class="label">Quante cartelle?</div>
-
-                    <div class="btnRow" id="qtyRow">
-                        <button class="qtyBtn active" data-n="1">1</button>
-                        <button class="qtyBtn" data-n="2">2</button>
-                        <button class="qtyBtn" data-n="3">3</button>
-                        <button class="qtyBtn" data-n="4">4</button>
-                    </div>
-
-                    <div class="sizeRow" aria-label="Dimensione numeri">
-                        <button class="sizeBtn" id="minus" aria-label="Diminuisci dimensione">−</button>
-                        <div class="sizeInfo" id="sizeInfo"></div>
-                        <button class="sizeBtn" id="plus" aria-label="Aumenta dimensione">+</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="cards" id="cards"></div>
-        </main>
+  <!-- Barra top a scomparsa: SOLO 4 bottoni -->
+  <div class="topbar" id="topbar">
+    <div class="topbarInner" id="qtyRow" aria-label="Numero cartelle">
+      <button class="qtyBtn" data-n="1">1</button>
+      <button class="qtyBtn" data-n="2">2</button>
+      <button class="qtyBtn" data-n="3">3</button>
+      <button class="qtyBtn active" data-n="4">4</button>
     </div>
+  </div>
 
-    <script>
-        // Glitter snow
-        const snow = document.getElementById('snow');
-        const N = 38;
-        for (let i = 0; i < N; i++) {
-            const f = document.createElement('div');
-            const isGold = Math.random() < 0.22;
-            f.className = 'flake' + (isGold ? ' gold' : '');
-            const x = Math.random() * 100;
-            const size = 4 + Math.random() * 6;
-            const dur = 8 + Math.random() * 14;
-            const dx = (Math.random() * 2 - 1) * 160 + "px";
-            f.style.left = x + "vw";
-            f.style.width = size + "px";
-            f.style.height = size + "px";
-            f.style.animationDuration = dur + "s";
-            f.style.setProperty('--dx', dx);
-            f.style.opacity = (0.35 + Math.random() * 0.6).toFixed(2);
-            f.style.filter = `blur(${(Math.random() * 0.6).toFixed(2)}px)`;
-            f.style.animationDelay = (-Math.random() * dur) + "s";
-            snow.appendChild(f);
+  <div class="wrap">
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <script>
+    // --- Snow (leggero) ---
+    const snow = document.getElementById('snow');
+    const N = 28;
+    for(let i=0;i<N;i++){
+      const f = document.createElement('div');
+      const isGold = Math.random() < 0.20;
+      f.className = 'flake' + (isGold ? ' gold' : '');
+      const x = Math.random()*100;
+      const size = 3 + Math.random()*5;
+      const dur = 9 + Math.random()*14;
+      const dx = (Math.random()*2-1) * 140 + "px";
+      f.style.left = x + "vw";
+      f.style.width = size + "px";
+      f.style.height = size + "px";
+      f.style.animationDuration = dur + "s";
+      f.style.setProperty('--dx', dx);
+      f.style.opacity = (0.30 + Math.random()*0.55).toFixed(2);
+      f.style.filter = `blur(${(Math.random()*0.6).toFixed(2)}px)`;
+      f.style.animationDelay = (-Math.random()*dur) + "s";
+      snow.appendChild(f);
+    }
+
+    // --- RNG semplice ---
+    function rng(){ return Math.random(); }
+    function pickUnique(arr, k){
+      const a = arr.slice();
+      const out = [];
+      for(let i=0;i<k;i++){
+        const idx = Math.floor(rng()*a.length);
+        out.push(a.splice(idx,1)[0]);
+      }
+      return out;
+    }
+
+    const COLS = [
+      {min:1,max:9},{min:10,max:19},{min:20,max:29},{min:30,max:39},{min:40,max:49},
+      {min:50,max:59},{min:60,max:69},{min:70,max:79},{min:80,max:90},
+    ];
+
+    function makeCard(){
+      let counts = Array(9).fill(1);
+      let remaining = 6;
+      while(remaining > 0){
+        const c = Math.floor(rng()*9);
+        if(counts[c] < 3){ counts[c]++; remaining--; }
+      }
+
+      const colNums = counts.map((cnt, ci)=>{
+        const range = [];
+        for(let n=COLS[ci].min; n<=COLS[ci].max; n++) range.push(n);
+        return pickUnique(range, cnt).sort((a,b)=>a-b);
+      });
+
+      for(let attempt=0; attempt<250; attempt++){
+        const rowCounts = [0,0,0];
+        const placement = Array(9).fill(null).map(()=>[]);
+
+        for(let ci=0; ci<9; ci++){
+          const cnt = colNums[ci].length;
+          let rows;
+          if(cnt === 3) rows = [0,1,2];
+          else if(cnt === 2){
+            const order = [0,1,2].sort((a,b)=>rowCounts[a]-rowCounts[b] || (rng()-0.5));
+            rows = [order[0], order[1]];
+          } else {
+            const order = [0,1,2].sort((a,b)=>rowCounts[a]-rowCounts[b] || (rng()-0.5));
+            rows = [order[0]];
+          }
+          for(const r of rows){
+            placement[ci].push(r);
+            rowCounts[r]++;
+          }
         }
 
-        // RNG semplice
-        function rng() { return Math.random(); }
-        function pickUnique(arr, k) {
-            const a = arr.slice();
-            const out = [];
-            for (let i = 0; i < k; i++) {
-                const idx = Math.floor(rng() * a.length);
-                out.push(a.splice(idx, 1)[0]);
+        if(rowCounts[0]===5 && rowCounts[1]===5 && rowCounts[2]===5){
+          const grid = Array.from({length:3}, ()=>Array(9).fill(null));
+          for(let ci=0; ci<9; ci++){
+            const rows = placement[ci].slice().sort((a,b)=>a-b);
+            const nums = colNums[ci];
+            for(let i=0;i<rows.length;i++){
+              grid[rows[i]][ci] = nums[i];
             }
-            return out;
+          }
+          return grid;
         }
+      }
+      return makeCard();
+    }
 
-        const COLS = [
-            { min: 1, max: 9 },
-            { min: 10, max: 19 },
-            { min: 20, max: 29 },
-            { min: 30, max: 39 },
-            { min: 40, max: 49 },
-            { min: 50, max: 59 },
-            { min: 60, max: 69 },
-            { min: 70, max: 79 },
-            { min: 80, max: 90 },
-        ];
+    function renderCard(container, idx, grid){
+      const card = document.createElement('div');
+      card.className = "tcard";
 
-        function makeCard() {
-            let counts = Array(9).fill(1);
-            let remaining = 6;
-            while (remaining > 0) {
-                const c = Math.floor(rng() * 9);
-                if (counts[c] < 3) { counts[c]++; remaining--; }
-            }
-
-            const colNums = counts.map((cnt, ci) => {
-                const range = [];
-                for (let n = COLS[ci].min; n <= COLS[ci].max; n++) range.push(n);
-                return pickUnique(range, cnt).sort((a, b) => a - b);
-            });
-
-            for (let attempt = 0; attempt < 250; attempt++) {
-                const rowCounts = [0, 0, 0];
-                const placement = Array(9).fill(null).map(() => []);
-
-                for (let ci = 0; ci < 9; ci++) {
-                    const cnt = colNums[ci].length;
-                    let rows;
-                    if (cnt === 3) rows = [0, 1, 2];
-                    else if (cnt === 2) {
-                        const order = [0, 1, 2].sort((a, b) => rowCounts[a] - rowCounts[b] || (rng() - 0.5));
-                        rows = [order[0], order[1]];
-                    } else {
-                        const order = [0, 1, 2].sort((a, b) => rowCounts[a] - rowCounts[b] || (rng() - 0.5));
-                        rows = [order[0]];
-                    }
-                    for (const r of rows) {
-                        placement[ci].push(r);
-                        rowCounts[r]++;
-                    }
-                }
-
-                if (rowCounts[0] === 5 && rowCounts[1] === 5 && rowCounts[2] === 5) {
-                    const grid = Array.from({ length: 3 }, () => Array(9).fill(null));
-                    for (let ci = 0; ci < 9; ci++) {
-                        const rows = placement[ci].slice().sort((a, b) => a - b);
-                        const nums = colNums[ci];
-                        for (let i = 0; i < rows.length; i++) {
-                            grid[rows[i]][ci] = nums[i];
-                        }
-                    }
-                    return grid;
-                }
-            }
-            return makeCard();
-        }
-
-        function renderCard(container, idx, grid) {
-            const card = document.createElement('div');
-            card.className = "tcard";
-
-            card.innerHTML = `
+      card.innerHTML = `
         <h3 class="tTitle">
           <span class="tSpacer"></span>
-          <span class="tTitleText">Cartella ${idx + 1}</span>
+          <span class="tTitleText">Cartella ${idx+1}</span>
           <span class="tSanta">🎄</span>
         </h3>
       `;
 
-            const g = document.createElement('div');
-            g.className = 'grid9';
+      const g = document.createElement('div');
+      g.className = 'grid9';
 
-            grid.flat().forEach((val) => {
-                const c = document.createElement('div');
-                c.className = 'cell' + (val == null ? ' empty' : '');
-                c.textContent = val == null ? '' : val;
-                if (val != null) {
-                    c.addEventListener('click', () => c.classList.toggle('marked'), { passive: true });
-                }
-                g.appendChild(c);
-            });
-
-            card.appendChild(g);
-            container.appendChild(card);
+      grid.flat().forEach((val)=>{
+        const c = document.createElement('div');
+        c.className = 'cell' + (val==null ? ' empty' : '');
+        c.textContent = val==null ? '' : val;
+        if(val!=null){
+          c.addEventListener('click', ()=> c.classList.toggle('marked'), {passive:true});
         }
+        g.appendChild(c);
+      });
 
-        // ---- selezione cartelle + genera al click ----
-        let selectedN = 1;
+      card.appendChild(g);
+      container.appendChild(card);
+    }
 
-        const qtyRow = document.getElementById('qtyRow');
-        qtyRow.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-n]');
-            if (!btn) return;
+    // --- MOBILE: dimensioni massime automatiche per mostrare 4 cartelle "il più grande possibile" ---
+    const root = document.documentElement;
+    const cardsWrap = document.getElementById('cards');
+    const topbar = document.getElementById('topbar');
 
-            selectedN = parseInt(btn.dataset.n, 10);
-            qtyRow.querySelectorAll('.qtyBtn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+    function applyMaxSizing(){
+      // spazio disponibile (viewport - topbar - padding wrap stimato)
+      const barH = topbar.getBoundingClientRect().height || 64;
+      const vh = window.innerHeight;
+      const vw = Math.min(window.innerWidth, cardsWrap.getBoundingClientRect().width || window.innerWidth);
 
-            generate();
-        });
+      // 2 colonne (default per vedere 4 cartelle)
+      const cols = 2;
+      const outerGap = 10; // coincide con .cards gap
+      const wrapPadX = 10 * 2; // .wrap padding laterale
+      const usableW = Math.max(260, vw - wrapPadX);
+      const cardW = (usableW - outerGap) / cols;
 
-        function generate() {
-            const wrap = document.getElementById('cards');
-            wrap.innerHTML = "";
-            for (let i = 0; i < selectedN; i++) {
-                renderCard(wrap, i, makeCard());
-            }
+      // calcolo max cellH da larghezza (9 colonne con gap)
+      // proviamo vari gap (2..1) e scegliamo cellH più grande che ci sta
+      const gap = 2;
+      const cellByW = Math.floor((cardW - (gap * 8) - 2) / 9); // 8 gap tra 9 celle
+      let cellH = Math.max(22, Math.min(48, cellByW)); // limiti ragionevoli
 
-            // IMPORTANT: applica anche la scala cartelle in base ai bottoni +/-
-            updateCardSizing();
+      // stima altezza necessaria per 2 righe di cartelle
+      const rows = 2;
+      const titleF = 14;
+      const titleH = Math.ceil(titleF * 1.3) + 6;
+      const pad = 8;
+      const gridH = (cellH * 3) + (gap * 2);
+      const cardH = (pad*2) + titleH + gridH;
 
-            wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+      const wrapPadTop = 10;
+      const wrapPadBottom = 18;
+      const usableH = vh - barH - wrapPadTop - wrapPadBottom - 12; // piccola tolleranza
 
-        // ---- + / - dimensione numeri (e cartelle) ----
-        const root = document.documentElement;
-        const sizeInfo = document.getElementById('sizeInfo');
+      const neededH = (rows * cardH) + outerGap;
 
-        let numMin = 21;
-        let numMax = 28;
+      if(neededH > usableH){
+        // riduci cellH per far stare tutto
+        const maxCardH = Math.floor((usableH - outerGap) / rows);
+        const maxGridH = maxCardH - (pad*2) - titleH;
+        const maxCell = Math.floor((maxGridH - (gap*2)) / 3);
+        cellH = Math.max(18, Math.min(cellH, maxCell));
+      }
 
-        const STEP = 2;
-        const MIN_MIN = 14;
-        const MAX_MAX = 36;
+      // font numeri proporzionale
+      const numMax = Math.max(16, Math.min(30, Math.round(cellH * 0.62)));
+      const numMin = Math.max(12, Math.round(numMax * 0.75));
 
-        // Scala anche cartelle (celle, gap, padding, titolo, albero) in base a numMax
-        function updateCardSizing() {
-            const scale = numMax / 28; // 28 => scala 1
+      // applica variabili
+      root.style.setProperty('--gridGap', gap + 'px');
+      root.style.setProperty('--cellH', cellH + 'px');
+      root.style.setProperty('--cardPad', pad + 'px');
+      root.style.setProperty('--titleF', titleF + 'px');
+      root.style.setProperty('--santaF', Math.round(titleF * 1.7) + 'px');
 
-            // basi coerenti col CSS attuale
-            const baseCellH = 40;
-            const baseGap = 1;
-            const basePad = 8;
-            const baseTitle = 14;
-            const baseSanta = 24;
+      root.style.setProperty('--numMin', numMin + 'px');
+      root.style.setProperty('--numMax', numMax + 'px');
+      root.style.setProperty('--numVw', (Math.max(3.2, Math.min(5.0, (numMax/6)))) + 'vw');
+    }
 
-            const cellH = Math.round(baseCellH * scale);
-            const gap = Math.max(1, Math.min(6, Math.round(baseGap * scale)));
-            const pad = Math.round(basePad * scale);
-            const titleF = Math.round(baseTitle * scale);
-            const santaF = Math.round(baseSanta * scale);
+    // --- Numero cartelle: default 4 ---
+    let selectedN = 4;
 
-            // allarga anche in orizzontale: aumenta la larghezza minima delle cartelle
-            const cardsWrap = document.getElementById('cards');
-            const baseMinCardW = 420; // valore base (a scala 1)
-            const minCardW = Math.round(baseMinCardW * scale);
+    function setGridForN(n){
+      // Per mobile: 4 => 2x2. Per 3 => 2 colonne, per 2 => 2 colonne, per 1 => 1 colonna.
+      if(n === 1) cardsWrap.style.gridTemplateColumns = '1fr';
+      else cardsWrap.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    }
 
-            // clamp per non esagerare
-            const clampedMinCardW = Math.max(320, Math.min(900, minCardW));
+    function generate(){
+      setGridForN(selectedN);
+      applyMaxSizing();
 
-            // inline style = prevale anche sulla media query
-            cardsWrap.style.gridTemplateColumns = `repeat(auto-fit, minmax(${clampedMinCardW}px, 1fr))`;
+      cardsWrap.innerHTML = "";
+      for(let i=0;i<selectedN;i++){
+        renderCard(cardsWrap, i, makeCard());
+      }
+    }
 
+    // Click bottoni 1-4
+    const qtyRow = document.getElementById('qtyRow');
+    qtyRow.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-n]');
+      if(!btn) return;
 
-            document.querySelectorAll('.tcard').forEach(tc => {
-                tc.style.padding = pad + 'px';
-            });
-            document.querySelectorAll('.grid9').forEach(g => {
-                g.style.gap = gap + 'px';
-            });
-            document.querySelectorAll('.cell').forEach(c => {
-                c.style.height = cellH + 'px';
-            });
-            document.querySelectorAll('.tTitle').forEach(t => {
-                t.style.fontSize = titleF + 'px';
-            });
-            document.querySelectorAll('.tSanta').forEach(s => {
-                s.style.fontSize = santaF + 'px';
-            });
-        }
+      selectedN = parseInt(btn.dataset.n, 10);
+      qtyRow.querySelectorAll('.qtyBtn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
 
-        function applySize() {
-            root.style.setProperty('--numMin', numMin + 'px');
-            root.style.setProperty('--numMax', numMax + 'px');
+      generate();
+    });
 
-            // Mostra oppure lascia vuoto (come volevi tu)
-            sizeInfo.textContent = ``;
+    // Barra a scomparsa: nasconde quando scrolli giù, mostra quando scrolli su / tocchi
+    let lastY = window.scrollY;
+    let barHidden = false;
 
-            // aggiorna anche dimensione cartelle
-            updateCardSizing();
-        }
+    function setBarHidden(hidden){
+      barHidden = hidden;
+      topbar.classList.toggle('hidden', hidden);
+    }
 
-        document.getElementById('plus').addEventListener('click', () => {
-            if (numMax + STEP > MAX_MAX) return;
-            numMin += STEP; numMax += STEP;
-            applySize();
-        });
+    window.addEventListener('scroll', ()=>{
+      const y = window.scrollY;
+      const dy = y - lastY;
+      lastY = y;
 
-        document.getElementById('minus').addEventListener('click', () => {
-            if (numMin - STEP < MIN_MIN) return;
-            numMin -= STEP; numMax -= STEP;
-            applySize();
-        });
+      // se sei in alto, mostrala sempre
+      if(y < 10){ setBarHidden(false); return; }
 
-        // init
-        applySize();
-        generate();
-    </script>
+      if(dy > 6 && !barHidden) setBarHidden(true);   // scroll giù
+      if(dy < -6 && barHidden) setBarHidden(false);  // scroll su
+    }, {passive:true});
+
+    // tap sullo schermo in alto per richiamare la barra
+    window.addEventListener('touchstart', (e)=>{
+      const t = e.touches && e.touches[0];
+      if(!t) return;
+      if(t.clientY < 80) setBarHidden(false);
+    }, {passive:true});
+
+    // ricalcola dimensioni su resize/orientamento
+    window.addEventListener('resize', ()=>{
+      applyMaxSizing();
+    }, {passive:true});
+
+    // init
+    applyMaxSizing();
+    generate();
+  </script>
 </body>
-
 </html>
