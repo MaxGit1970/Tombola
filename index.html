@@ -1,21 +1,19 @@
-<!-- index.html (mobile-friendly, tutto centrato nello schermo) -->
+<!-- index.html (mobile-friendly + crea room + link diretti) -->
 <!doctype html>
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Tombola Natalizia</title>
 
   <style>
     :root{
-      --bgA:#ff1e3a;   /* rosso Natale */
-      --bgB:#c4001a;   /* rosso profondo (sfumatura più visibile) */
+      --bgA:#ff1e3a;
+      --bgB:#c4001a;
       --gold:#ffcc2e;
       --green:#0a8f3f;
 
       --txt:#141414;
-      --mut:#2e2e2e;
-
       --stroke: rgba(255,255,255,.75);
       --shadow: 0 20px 55px rgba(0,0,0,.18);
       --r: 22px;
@@ -25,7 +23,7 @@
 
     body{
       margin:0;
-      min-height: 100svh;           /* meglio di 100vh su mobile */
+      min-height: 100svh;
       color:var(--txt);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background:
@@ -35,12 +33,9 @@
         linear-gradient(135deg, var(--bgA), var(--bgB));
       overflow-x:hidden;
 
-      /* centra tutto */
       display:flex;
       justify-content:center;
       align-items:center;
-
-      /* respiro su schermi piccoli */
       padding: 18px 0;
     }
 
@@ -51,7 +46,7 @@
       display:flex;
       flex-direction:column;
       gap: 18px;
-      align-items:center; /* centra hero+footer come blocchi */
+      align-items:center;
     }
 
     .hero{
@@ -93,7 +88,37 @@
       max-width: 70ch;
       color: rgba(0,0,0,.72);
       font-size: 16px;
-      line-height: 1.5;
+      line-height: 1.45;
+    }
+
+    .roomBox{
+      margin: 10px auto 0;
+      width: min(520px, 100%);
+      border:1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.84);
+      border-radius: 18px;
+      padding: 12px;
+      box-shadow: 0 14px 30px rgba(0,0,0,.14);
+      text-align:left;
+    }
+    .roomRow{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .roomLabel{ font-size:12px; color:rgba(0,0,0,.62); font-weight:900; }
+    .roomCode{
+      font-size:20px;
+      font-weight:1000;
+      letter-spacing: .8px;
+      background: rgba(255,255,255,.9);
+      border:1px solid rgba(0,0,0,.10);
+      padding: 8px 10px;
+      border-radius: 14px;
+      min-width: 140px;
+      text-align:center;
     }
 
     .ctaRow{
@@ -104,41 +129,54 @@
       margin-top: 12px;
     }
 
-    a.btn{
-      text-decoration:none;
-      padding: 14px 16px;
+    .btn{
+      border: 1px solid rgba(0,0,0,.12);
+      box-shadow: 0 14px 30px rgba(0,0,0,.18);
       border-radius: 16px;
       font-weight: 900;
       letter-spacing: .2px;
-      display: inline-flex;
-      gap: 10px;
-      align-items: center;
-      justify-content:center;
-      border: 1px solid rgba(0,0,0,.12);
-      box-shadow: 0 14px 30px rgba(0,0,0,.18);
-      user-select: none;
-      color: #111;
-
-      /* mobile: bottoni grandi e comodi */
+      padding: 14px 16px;
       min-height: 48px;
       min-width: min(420px, 100%);
       width: 100%;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      text-decoration:none;
+      color:#111;
+      user-select:none;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    /* su desktop tornano "affiancati" */
     @media (min-width: 620px){
-      a.btn{
-        width: auto;
-        min-width: 280px;
-      }
+      .btn{ width:auto; min-width: 280px; }
     }
 
-    .btn.red{
-      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
+    .btn.gold{ background: linear-gradient(180deg, #ffe17b, #ffcc2e); }
+    .btn.red{ background: linear-gradient(180deg, #ff6b7c, #ff1e3a); }
+    .btn:disabled, .btn.disabled{
+      opacity:.55;
+      pointer-events:none;
     }
 
-    .btn.gold{
-      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
+    .miniRow{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+    .miniBtn{
+      border:1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.86);
+      border-radius: 999px;
+      padding: 10px 12px;
+      font-weight: 900;
+      cursor:pointer;
+      box-shadow: 0 12px 24px rgba(0,0,0,.12);
+      min-height: 42px;
     }
 
     footer{
@@ -151,19 +189,11 @@
       padding-bottom: 2px;
     }
 
-    /* Glitter snow */
-    .snow{
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      overflow:hidden;
-    }
+    /* Snow */
+    .snow{ position:fixed; inset:0; pointer-events:none; overflow:hidden; }
     .flake{
-      position:absolute;
-      top:-10px;
-      width:7px;
-      height:7px;
-      border-radius:50%;
+      position:absolute; top:-10px;
+      width:7px; height:7px; border-radius:50%;
       background: rgba(255,255,255,.95);
       box-shadow: 0 0 16px rgba(255,255,255,.45);
       opacity:.9;
@@ -174,13 +204,9 @@
       box-shadow: 0 0 16px rgba(255,204,46,.45);
       opacity:.85;
     }
-    @keyframes fall{
-      to{ transform: translate3d(var(--dx), 110svh, 0); }
-    }
-
-    /* accessibilità: riduci animazioni se richiesto */
+    @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
     @media (prefers-reduced-motion: reduce){
-      .flake{ animation: none; opacity: .35; }
+      .flake{ animation:none; opacity:.35; }
     }
   </style>
 </head>
@@ -195,12 +221,26 @@
       <h1>🎄 Tombola Natalizia • Max 🎄</h1>
 
       <p class="sub">
-        
+        1) Crea una nuova <b>Room</b> • 2) Apri Tabellone o Cartelle • 3) Condividi il codice Room agli altri.
       </p>
 
+      <div class="roomBox">
+        <div class="roomRow">
+          <div>
+            <div class="roomLabel">ROOM ATTUALE</div>
+            <div class="roomCode" id="roomCode">—</div>
+          </div>
+
+          <div class="miniRow">
+            <button class="miniBtn" id="btnCreate">✨ Crea nuova Room</button>
+            <button class="miniBtn" id="btnCopy" title="Copia codice">📋 Copia</button>
+          </div>
+        </div>
+      </div>
+
       <div class="ctaRow">
-        <a class="btn gold" href="./tabellone.html">Apri Tabellone (Conduttore)</a>
-        <a class="btn gold" href="./cartelle.html">Apri Cartelle (Giocatori)</a>
+        <a class="btn gold disabled" id="goTabellone" href="#">Apri Tabellone (Conduttore)</a>
+        <a class="btn gold disabled" id="goCartelle" href="#">Apri Cartelle (Giocatori)</a>
       </div>
     </div>
 
@@ -208,9 +248,90 @@
   </div>
 
   <script>
-    // Glitter snow (white + gold) - leggero anche su mobile
+    const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
+
+    function jsonp(action, params={}){
+      return new Promise((resolve, reject)=>{
+        const cb = "cb_" + Math.random().toString(36).slice(2);
+        const qs = new URLSearchParams({ action, ...params, callback: cb }).toString();
+        const s = document.createElement("script");
+        const t = setTimeout(()=>{ cleanup(); reject(new Error("Timeout")); }, 12000);
+
+        function cleanup(){
+          clearTimeout(t);
+          if(window[cb]) delete window[cb];
+          if(s && s.parentNode) s.parentNode.removeChild(s);
+        }
+
+        window[cb] = (data)=>{ cleanup(); resolve(data); };
+        s.src = API_BASE + "?" + qs;
+        s.onerror = ()=>{ cleanup(); reject(new Error("Network error")); };
+        document.body.appendChild(s);
+      });
+    }
+
+    const elRoom = document.getElementById("roomCode");
+    const btnCreate = document.getElementById("btnCreate");
+    const btnCopy = document.getElementById("btnCopy");
+    const aTab = document.getElementById("goTabellone");
+    const aCar = document.getElementById("goCartelle");
+
+    function setRoom(roomId){
+      const r = (roomId || "").trim().toUpperCase();
+      if(!r){
+        elRoom.textContent = "—";
+        aTab.classList.add("disabled");
+        aCar.classList.add("disabled");
+        aTab.href = "#";
+        aCar.href = "#";
+        return;
+      }
+      localStorage.setItem("tombola_roomId", r);
+      elRoom.textContent = r;
+
+      aTab.classList.remove("disabled");
+      aCar.classList.remove("disabled");
+      aTab.href = "./tabellone.html?room=" + encodeURIComponent(r);
+      aCar.href = "./cartelle.html?room=" + encodeURIComponent(r);
+    }
+
+    // ripristina room salvata se esiste
+    setRoom(localStorage.getItem("tombola_roomId") || "");
+
+    btnCreate.addEventListener("click", async ()=>{
+      btnCreate.disabled = true;
+      btnCreate.textContent = "⏳ Creo…";
+      try{
+        const res = await jsonp("createRoom", {});
+        if(res && res.ok && res.roomId){
+          setRoom(res.roomId);
+        }else{
+          alert("Errore nella creazione room.");
+        }
+      }catch(e){
+        alert("Errore di rete/timeout nella creazione room.");
+      }finally{
+        btnCreate.disabled = false;
+        btnCreate.textContent = "✨ Crea nuova Room";
+      }
+    });
+
+    btnCopy.addEventListener("click", async ()=>{
+      const r = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
+      if(!r){ alert("Nessuna room da copiare. Crea prima una room."); return; }
+      try{
+        await navigator.clipboard.writeText(r);
+        btnCopy.textContent = "✅ Copiato";
+        setTimeout(()=> btnCopy.textContent = "📋 Copia", 900);
+      }catch(e){
+        // fallback
+        prompt("Copia il codice:", r);
+      }
+    });
+
+    // Snow
     const snow = document.getElementById('snow');
-    const N = 42; // meno particelle = più fluido su telefono
+    const N = 42;
     for (let i = 0; i < N; i++) {
       const f = document.createElement('div');
       const isGold = Math.random() < 0.22;
@@ -219,7 +340,6 @@
       const size = 4 + Math.random() * 6;
       const dur = 8 + Math.random() * 14;
       const dx = (Math.random() * 2 - 1) * 160 + "px";
-
       f.style.left = x + "vw";
       f.style.width = size + "px";
       f.style.height = size + "px";
@@ -228,7 +348,6 @@
       f.style.opacity = (0.35 + Math.random() * 0.6).toFixed(2);
       f.style.filter = `blur(${(Math.random() * 0.6).toFixed(2)}px)`;
       f.style.animationDelay = (-Math.random() * dur) + "s";
-
       snow.appendChild(f);
     }
   </script>

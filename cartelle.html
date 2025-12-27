@@ -1,4 +1,4 @@
-<!-- cartelle.html (MOBILE-FIRST: cartelle una sotto l'altra, default 4, dimensioni automatiche massime, barra top a scomparsa con 1-4, niente + / -) -->
+<!-- cartelle.html (MOBILE-FIRST + Google Sheet backend + icona Utente) -->
 <!doctype html>
 <html lang="it">
 <head>
@@ -64,7 +64,7 @@
     .topbar.hidden{ transform: translateY(-120%); }
 
     .topbarInner{
-      width: min(560px, 100%);
+      width: min(640px, 100%);
       border: 1px solid rgba(255,255,255,.65);
       background: rgba(255,255,255,.88);
       border-radius: 999px;
@@ -98,6 +98,35 @@
       border-color: rgba(0,0,0,.18);
     }
 
+    /* Bottone Utente */
+    .userBtn{
+      border: 1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.94);
+      color:#111;
+      border-radius: 999px;
+      padding: 10px 12px;
+      min-width: 54px;
+      font-weight: 1000;
+      font-size: 18px;
+      line-height: 1;
+      box-shadow: 0 10px 22px rgba(0,0,0,.10);
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+    }
+    .userMini{
+      font-size: 12px;
+      color: rgba(0,0,0,.60);
+      font-weight: 900;
+      max-width: 130px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     /* layout principale */
     .wrap{
       width: 100%;
@@ -126,7 +155,7 @@
 
     /* Titolo: testo centrato, albero a destra, allineati */
     .tTitle{
-      margin: 0 0 3px; /* meno spazio sopra la griglia */
+      margin: 0 0 3px;
       display:grid;
       grid-template-columns: 1fr auto 1fr;
       align-items:center;
@@ -152,7 +181,7 @@
     .cell{
       height: var(--cellH);
       border-radius: 14px;
-      border: 1px solid rgba(0,0,0,.12); /* bordo più sottile = più spazio visivo ai numeri */
+      border: 1px solid rgba(0,0,0,.12);
       background: rgba(255,255,255,.96);
       display:flex;
       align-items:center;
@@ -179,9 +208,76 @@
       border-color: rgba(215,0,27,.62);
       box-shadow: 0 12px 26px rgba(215,0,27,.14);
     }
-
-    /* niente stelline / icone su cella marcata */
     .cell.marked::after{ content:""; }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 18px;
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(0,0,0,.10);
+      box-shadow: 0 14px 30px rgba(0,0,0,.18);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 900;
+      z-index: 80;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .18s ease;
+      max-width: min(640px, calc(100% - 24px));
+      text-align:center;
+    }
+    .toast.show{ opacity: 1; }
+
+    /* Modal nome */
+    .overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 90;
+      padding: 18px;
+    }
+    .overlay.show{ display:flex; }
+    .modal{
+      width: min(520px, 100%);
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(255,255,255,.55);
+      border-radius: 22px;
+      box-shadow: 0 20px 55px rgba(0,0,0,.25);
+      padding: 16px;
+    }
+    .modal h3{ margin:0 0 10px; }
+    .modal p{ margin:0 0 10px; color:rgba(0,0,0,.70); }
+    .row{
+      display:flex; gap:10px; align-items:center;
+    }
+    input{
+      flex:1;
+      border-radius: 14px;
+      border:1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.95);
+      padding: 12px 12px;
+      font-weight: 900;
+      outline:none;
+    }
+    .mBtn{
+      border-radius: 14px;
+      border:1px solid rgba(0,0,0,.12);
+      padding: 12px 12px;
+      font-weight: 1000;
+      cursor:pointer;
+      background: rgba(255,255,255,.92);
+      box-shadow: 0 14px 30px rgba(0,0,0,.14);
+      min-width: 120px;
+    }
+    .mBtn.primary{
+      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
+    }
 
     /* Glitter snow (leggero) */
     .snow{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
@@ -210,13 +306,36 @@
 <body>
   <div class="snow" id="snow"></div>
 
-  <!-- Barra top a scomparsa: SOLO 4 bottoni -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Modal nome -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Nome giocatore">
+    <div class="modal">
+      <h3>👤 Nome giocatore</h3>
+      <p>Inserisci il tuo nome (opzionale). Se lasci vuoto, resta un nome univoco automatico.</p>
+      <div class="row">
+        <input id="nameInput" placeholder="Es. Mario" />
+        <button class="mBtn primary" id="saveName">Salva</button>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end">
+        <button class="mBtn" id="closeModal">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra top a scomparsa -->
   <div class="topbar" id="topbar">
-    <div class="topbarInner" id="qtyRow" aria-label="Numero cartelle">
-      <button class="qtyBtn" data-n="1">1</button>
-      <button class="qtyBtn" data-n="2">2</button>
-      <button class="qtyBtn" data-n="3">3</button>
-      <button class="qtyBtn active" data-n="4">4</button>
+    <div class="topbarInner" aria-label="Numero cartelle">
+      <div id="qtyRow" style="display:flex;gap:10px;align-items:center">
+        <button class="qtyBtn" data-n="1">1</button>
+        <button class="qtyBtn" data-n="2">2</button>
+        <button class="qtyBtn" data-n="3">3</button>
+        <button class="qtyBtn active" data-n="4">4</button>
+      </div>
+
+      <button class="userBtn" id="userBtn" title="Imposta nome">
+        👤 <span class="userMini" id="userMini">Anonimo</span>
+      </button>
     </div>
   </div>
 
@@ -225,6 +344,118 @@
   </div>
 
   <script>
+    // ====== CONFIG ======
+    const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
+
+    function getRoomId(){
+      const url = new URL(location.href);
+      const q = (url.searchParams.get("room") || "").trim().toUpperCase();
+      const ls = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
+      let room = q || ls;
+      if(!room){
+        room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
+      }
+      if(room) localStorage.setItem("tombola_roomId", room);
+      return room;
+    }
+
+    // JSONP helper (evita CORS)
+    function jsonp(action, params={}){
+      return new Promise((resolve, reject)=>{
+        const cb = "cb_" + Math.random().toString(36).slice(2);
+        const qs = new URLSearchParams({ action, ...params, callback: cb }).toString();
+        const s = document.createElement("script");
+        const t = setTimeout(()=>{ cleanup(); reject(new Error("Timeout")); }, 12000);
+
+        function cleanup(){
+          clearTimeout(t);
+          if(window[cb]) delete window[cb];
+          if(s && s.parentNode) s.parentNode.removeChild(s);
+        }
+
+        window[cb] = (data)=>{ cleanup(); resolve(data); };
+        s.src = API_BASE + "?" + qs;
+        s.onerror = ()=>{ cleanup(); reject(new Error("Network error")); };
+        document.body.appendChild(s);
+      });
+    }
+
+    // Toast
+    const toast = document.getElementById("toast");
+    let toastT = null;
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toastT);
+      toastT = setTimeout(()=>toast.classList.remove("show"), 1800);
+    }
+
+    // Modal nome
+    const overlay = document.getElementById("overlay");
+    const userBtn = document.getElementById("userBtn");
+    const userMini = document.getElementById("userMini");
+    const nameInput = document.getElementById("nameInput");
+
+    function openModal(){
+      overlay.classList.add("show");
+      nameInput.value = (localStorage.getItem(nameKey()) || "").trim();
+      setTimeout(()=>nameInput.focus(), 50);
+    }
+    function closeModal(){
+      overlay.classList.remove("show");
+    }
+
+    document.getElementById("closeModal").onclick = closeModal;
+    overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closeModal(); });
+    userBtn.onclick = openModal;
+
+    // ====== Identità ======
+    const roomId = getRoomId();
+
+    function pidKey(){ return "tombola_playerId_" + roomId; }
+    function nameKey(){ return "tombola_playerName_" + roomId; }
+
+    function getPlayerId(){
+      let pid = (localStorage.getItem(pidKey()) || "").trim().toUpperCase();
+      if(!pid){
+        pid = Math.random().toString(16).slice(2,10).toUpperCase();
+        localStorage.setItem(pidKey(), pid);
+      }
+      return pid;
+    }
+
+    function getPlayerName(){
+      return (localStorage.getItem(nameKey()) || "").trim();
+    }
+
+    async function join(){
+      const playerId = getPlayerId();
+      const name = getPlayerName();
+      const res = await jsonp("join", { roomId, playerId, name });
+      if(res && res.ok){
+        // se non avevo nome, prendo quello default univoco dal server
+        if(!getPlayerName()){
+          localStorage.setItem(nameKey(), res.name || "");
+        }
+        userMini.textContent = (localStorage.getItem(nameKey()) || "Anonimo");
+        return res;
+      }
+      throw new Error(res && res.error ? res.error : "join failed");
+    }
+
+    document.getElementById("saveName").onclick = async ()=>{
+      const val = nameInput.value.trim();
+      localStorage.setItem(nameKey(), val); // può essere vuoto (server userà default univoco)
+      userMini.textContent = (val || "Anonimo");
+      closeModal();
+      try{
+        await jsonp("join", { roomId, playerId: getPlayerId(), name: val });
+        showToast("Nome aggiornato ✅");
+      }catch(e){
+        showToast("Errore nome ❌");
+      }
+    };
+
     // --- Snow (leggero) ---
     const snow = document.getElementById('snow');
     const N = 28;
@@ -317,7 +548,6 @@
     function renderCard(container, idx, grid){
       const card = document.createElement('div');
       card.className = "tcard";
-
       card.innerHTML = `
         <h3 class="tTitle">
           <span class="tSpacer"></span>
@@ -333,9 +563,34 @@
         const c = document.createElement('div');
         c.className = 'cell' + (val==null ? ' empty' : '');
         c.textContent = val==null ? '' : val;
+
         if(val!=null){
-          c.addEventListener('click', ()=> c.classList.toggle('marked'), {passive:true});
+          c.addEventListener('click', async ()=>{
+            const willMark = !c.classList.contains("marked");
+            c.classList.toggle('marked');
+
+            const res = await jsonp("mark", {
+              roomId,
+              playerId: getPlayerId(),
+              cardIndex: idx,
+              n: Number(val),
+              marked: willMark ? 1 : 0
+            });
+
+            if(!res || !res.ok){
+              // rollback se server rifiuta (anti-cheat)
+              c.classList.toggle('marked');
+              showToast(res && res.error ? res.error : "Marcatura rifiutata");
+              return;
+            }
+
+            // premi nuovi
+            if(Array.isArray(res.newly) && res.newly.length){
+              showToast("🎉 " + res.newly.map(x=>x.prize).join(", "));
+            }
+          }, {passive:true});
         }
+
         g.appendChild(c);
       });
 
@@ -362,19 +617,15 @@
       const wrapPadBottom = 18;
       const usableH = vh - barH - wrapPadTop - wrapPadBottom - 12;
 
-      // ✅ PIÙ SPAZIO AI NUMERI: gap e padding più piccoli
-      const gap = 1;     // prima 2
-      const pad = 5;     // prima 8
+      const gap = 1;
+      const pad = 5;
 
-      // ✅ titolo più compatto
-      const titleF = 12; // prima 14
+      const titleF = 12;
       const titleH = Math.ceil(titleF * 1.2) + 3;
 
-      // vincolo larghezza: 9 celle + 8 gap
       const cellByW = Math.floor((usableW - (gap * 8) - 2) / 9);
       let cellH = Math.max(18, Math.min(60, cellByW));
 
-      // vincolo altezza: N cartelle in verticale
       const maxCardH = Math.floor((usableH - outerGap * (n - 1)) / n);
       const maxGridH = maxCardH - (pad * 2) - titleH;
       const maxCellByH = Math.floor((maxGridH - (gap * 2)) / 3);
@@ -383,7 +634,6 @@
         cellH = Math.min(cellH, Math.max(16, maxCellByH));
       }
 
-      // ✅ NUMERI PIÙ GRANDI (priorità)
       const numMax = Math.max(16, Math.min(42, Math.round(cellH * 0.90)));
       const numMin = Math.max(14, Math.round(numMax * 0.82));
 
@@ -395,18 +645,43 @@
 
       root.style.setProperty('--numMin', numMin + 'px');
       root.style.setProperty('--numMax', numMax + 'px');
-      root.style.setProperty('--numVw', '6.2vw'); // più aggressivo su mobile
+      root.style.setProperty('--numVw', '6.2vw');
     }
 
     // --- Numero cartelle: default 4 ---
     let selectedN = 4;
+    let currentGrids = [];
 
-    function generate(){
+    async function registerAllCards(){
+      // salva su backend tutte le cartelle del player (serve per anti-cheat)
+      const payload = currentGrids.map((grid, i)=>({ cardIndex: i, grid }));
+      const res = await jsonp("registerCards", {
+        roomId,
+        playerId: getPlayerId(),
+        cardsJson: JSON.stringify(payload)
+      });
+      if(!res || !res.ok){
+        showToast("Errore salvataggio cartelle");
+      }
+    }
+
+    async function generate(){
       applyMaxSizingForN(selectedN);
 
       cardsWrap.innerHTML = "";
+      currentGrids = [];
       for(let i=0;i<selectedN;i++){
-        renderCard(cardsWrap, i, makeCard());
+        const g = makeCard();
+        currentGrids.push(g);
+        renderCard(cardsWrap, i, g);
+      }
+
+      // registra cartelle dopo join
+      try{
+        await join();
+        await registerAllCards();
+      }catch(e){
+        showToast("Backend non raggiungibile");
       }
     }
 
@@ -423,7 +698,7 @@
       generate();
     });
 
-    // Barra a scomparsa: nasconde quando scrolli giù, mostra quando scrolli su / tocchi
+    // Barra a scomparsa
     let lastY = window.scrollY;
     let barHidden = false;
 
@@ -438,7 +713,6 @@
       lastY = y;
 
       if(y < 10){ setBarHidden(false); return; }
-
       if(dy > 6 && !barHidden) setBarHidden(true);
       if(dy < -6 && barHidden) setBarHidden(false);
     }, {passive:true});
@@ -451,12 +725,19 @@
 
     window.addEventListener('resize', ()=>{
       applyMaxSizingForN(selectedN);
-      // Non rigenero per non perdere marcature; aggiorna solo le misure
     }, {passive:true});
 
     // init
-    applyMaxSizingForN(selectedN);
-    generate();
+    (async ()=>{
+      try{
+        await join();
+        userMini.textContent = (localStorage.getItem(nameKey()) || "Anonimo");
+      }catch(e){
+        // ok
+      }
+      applyMaxSizingForN(selectedN);
+      generate();
+    })();
   </script>
 </body>
 </html>

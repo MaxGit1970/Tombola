@@ -1,10 +1,11 @@
-<!-- tabellone.html -->
+<!-- tabellone.html (MOBILE-FIRST + Google Sheet backend + board "a metà" + premi con numeri vincita) -->
 <!doctype html>
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Tabellone – Tombola Natalizia</title>
+
   <style>
     :root{
       --bgA:#ff1e3a;
@@ -13,95 +14,175 @@
       --green:#0a8f3f;
 
       --txt:#141414;
-      --mut:#2e2e2e;
-
-      --card: rgba(255,255,255,.80);
-      --card2: rgba(255,255,255,.70);
+      --card: rgba(255,255,255,.86);
+      --card2: rgba(255,255,255,.74);
       --stroke: rgba(255,255,255,.75);
-      --shadow: 0 20px 55px rgba(0,0,0,.18);
+      --shadow: 0 18px 44px rgba(0,0,0,.16);
       --r: 18px;
+
+      --gap: 10px;
+
+      /* board sizing */
+      --cellR: 14px;
+      --cellF: clamp(12px, 3.5vw, 18px);
+      --boardGap: 6px;
+      --midGap: 14px;
+
+      /* sticky bar height approx */
+      --stickyTop: calc(env(safe-area-inset-top) + 10px);
     }
+
     *{box-sizing:border-box}
     body{
-      margin:0; min-height:100vh; color:var(--txt);
+      margin:0; min-height:100svh; color:var(--txt);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background:
         radial-gradient(1000px 700px at 10% 10%, rgba(255,255,255,.30) 0%, transparent 58%),
         radial-gradient(800px 600px at 90% 12%, rgba(255,204,46,.35) 0%, transparent 55%),
         radial-gradient(900px 700px at 70% 90%, rgba(255,255,255,.22) 0%, transparent 62%),
         linear-gradient(135deg, var(--bgA), var(--bgB));
+      overflow-x:hidden;
     }
 
-    header{max-width:1200px;margin:0 auto;padding:18px 14px}
-    .top{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    .brand{display:flex;gap:10px;align-items:center}
-    .brand b{font-size:18px}
+    header{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 12px 8px;
+    }
+    .top{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .brand{
+      display:flex; gap:10px; align-items:center;
+    }
+    .brand b{font-size:16px}
     .pill{
       border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.78);
-      padding:8px 10px; border-radius:999px;
-      color: rgba(0,0,0,.65); font-size:13px
+      background: rgba(255,255,255,.84);
+      padding:7px 10px;
+      border-radius:999px;
+      color: rgba(0,0,0,.70);
+      font-size:12.5px;
+      text-decoration:none;
+      display:inline-flex; align-items:center; gap:8px;
+      box-shadow: 0 10px 22px rgba(0,0,0,.10);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
-    main{max-width:1200px;margin:0 auto;padding:0 14px 60px}
-    .grid{display:grid;gap:14px; grid-template-columns:1fr}
-    @media(min-width:980px){ .grid{grid-template-columns: 420px 1fr} }
+    .roomBadge{
+      font-weight: 1000;
+      letter-spacing: .3px;
+    }
+
+    main{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 12px 70px;
+      display:flex;
+      flex-direction:column;
+      gap: var(--gap);
+    }
 
     .card{
       border:1px solid var(--stroke);
       background: var(--card);
       border-radius: var(--r);
       box-shadow: var(--shadow);
-      padding: 14px;
+      padding: 12px;
+    }
+
+    /* Sticky compact control bar */
+    .sticky{
+      position: sticky;
+      top: var(--stickyTop);
+      z-index: 20;
     }
     .big{
-      display:flex; align-items:baseline; justify-content:space-between; gap:12px;
-      padding: 10px 12px; border-radius: 16px;
-      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.72));
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.74));
       border:1px solid rgba(0,0,0,.10);
-      margin-bottom:12px;
     }
-    .last{font-size:62px; font-weight:900; letter-spacing:-1px; line-height:1}
-    .label{color:rgba(0,0,0,.62); font-size:13px}
-    .smorfia{margin-top:6px; font-size:16px}
-    .controls{display:flex;flex-wrap:wrap;gap:10px}
+    .leftCol{ display:flex; flex-direction:column; gap:4px; }
+    .label{color:rgba(0,0,0,.62); font-size:12px}
+    .lastRow{display:flex; gap:10px; align-items:baseline}
+    .last{
+      font-size: clamp(44px, 10vw, 66px);
+      font-weight: 1000;
+      letter-spacing:-1px;
+      line-height:1;
+    }
+    .count{
+      font-size: 18px;
+      font-weight: 1000;
+      color: rgba(0,0,0,.72);
+      white-space:nowrap;
+    }
+    .smorfia{
+      font-size: 14px;
+      color: rgba(0,0,0,.78);
+      line-height: 1.25;
+    }
 
+    .controls{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+    }
     button{
-      cursor:pointer; border:1px solid rgba(0,0,0,.12);
-      border-radius:14px; padding:12px 12px;
-      font-weight:900; letter-spacing:.2px;
-      background: rgba(255,255,255,.85);
+      cursor:pointer;
+      border:1px solid rgba(0,0,0,.12);
+      border-radius:14px;
+      padding:12px 12px;
+      font-weight:1000;
+      letter-spacing:.2px;
+      background: rgba(255,255,255,.90);
       color:#111;
-      box-shadow: 0 14px 30px rgba(0,0,0,.16);
+      box-shadow: 0 14px 30px rgba(0,0,0,.14);
+      min-height: 46px;
+      flex: 1 1 0;
+      -webkit-tap-highlight-color: transparent;
     }
     button.primary{
       background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
-      color:#111;
     }
     button.gold{
       background: linear-gradient(180deg, #ffe17b, #ffcc2e);
-      color:#111;
     }
     button.danger{
       background: rgba(0,0,0,.06);
-      color:#111;
     }
     button:disabled{opacity:.55; cursor:not-allowed}
-    .hint{color:rgba(0,0,0,.62); font-size:13px; margin-top:10px; line-height:1.4}
 
+    /* Board (a metà) */
+    .boardCard .label{ margin-bottom: 10px; }
     .board{
       display:grid;
-      grid-template-columns: repeat(10, minmax(40px, 1fr));
-      gap:8px;
+      grid-template-columns: repeat(5, 1fr) var(--midGap) repeat(5, 1fr);
+      gap: var(--boardGap);
+    }
+    .spacer{
+      width: var(--midGap);
+      height: 1px;
     }
     .cell{
-      aspect-ratio:1/1;
+      aspect-ratio: 1/1;
       display:flex; align-items:center; justify-content:center;
-      border-radius: 14px;
+      border-radius: var(--cellR);
       border:1px solid rgba(0,0,0,.10);
-      background: rgba(255,255,255,.90);
-      font-weight:900;
-      position:relative;
+      background: rgba(255,255,255,.92);
+      font-weight:1000;
       user-select:none;
+      font-size: var(--cellF);
+      position:relative;
     }
     .cell.drawn{
       background: linear-gradient(180deg, rgba(10,143,63,.30), rgba(10,143,63,.14));
@@ -115,134 +196,228 @@
       filter: drop-shadow(0 8px 12px rgba(0,0,0,.25));
     }
 
-    .row2{display:grid; gap:14px; grid-template-columns:1fr}
-    @media(min-width:980px){ .row2{grid-template-columns: 1fr 1fr} }
+    /* Details (accordion) */
+    details{
+      border:1px solid rgba(255,255,255,.65);
+      background: var(--card2);
+      border-radius: 16px;
+      padding: 10px 10px;
+      box-shadow: 0 14px 30px rgba(0,0,0,.10);
+    }
+    summary{
+      list-style:none;
+      cursor:pointer;
+      font-weight: 1000;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      -webkit-tap-highlight-color: transparent;
+      user-select:none;
+    }
+    summary::-webkit-details-marker{ display:none; }
+    .sumRight{
+      font-size: 12px;
+      color: rgba(0,0,0,.65);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .eventList{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-height: 220px;
+      overflow:auto;
+      padding-right:6px;
+      margin-top:10px;
+    }
+    .eventItem{
+      border:1px solid rgba(0,0,0,.10);
+      background: rgba(255,255,255,.86);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:flex-start;
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+    }
+    .eventItem b{font-size:14px}
+    .eventMeta{font-size:12px;color:rgba(0,0,0,.62); line-height:1.25}
+    .eventNums{
+      margin-top:4px;
+      font-size:12px;
+      font-weight: 1000;
+      color: rgba(0,0,0,.78);
+    }
     .list{
-      display:flex; flex-wrap:wrap; gap:8px;
-      max-height: 210px; overflow:auto; padding-right:6px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      max-height: 200px;
+      overflow:auto;
+      padding-right:6px;
+      margin-top:10px;
     }
     .chip{
       border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.85);
-      padding:6px 10px; border-radius:999px;
-      font-weight:900; color:#111
+      background: rgba(255,255,255,.88);
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:1000;
+      color:#111;
+      font-size: 13px;
+    }
+
+    .hint{
+      color:rgba(0,0,0,.62);
+      font-size:12.5px;
+      line-height:1.35;
+      text-align:center;
+      margin-top:10px;
     }
 
     /* Glitter snow */
-    .snow{position:fixed; inset:0; pointer-events:none; overflow:hidden}
+    .snow{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0}
     .flake{
-      position:absolute; top:-10px; width:7px; height:7px; border-radius:50%;
+      position:absolute; top:-10px; width:6px; height:6px; border-radius:50%;
       background: rgba(255,255,255,.95);
-      box-shadow: 0 0 16px rgba(255,255,255,.45);
-      opacity:.9;
+      box-shadow: 0 0 14px rgba(255,255,255,.45);
+      opacity:.85;
       animation: fall linear infinite;
     }
     .flake.gold{
       background: rgba(255,204,46,.95);
-      box-shadow: 0 0 16px rgba(255,204,46,.45);
-      opacity:.85;
+      box-shadow: 0 0 14px rgba(255,204,46,.45);
+      opacity:.8;
     }
-    @keyframes fall{ to{ transform: translate3d(var(--dx), 110vh, 0); } }
+    @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
+    @media (prefers-reduced-motion: reduce){
+      .flake{ animation:none; opacity:.30; }
+    }
   </style>
 </head>
+
 <body>
   <div class="snow" id="snow"></div>
 
   <header>
     <div class="top">
       <div class="brand">
-        <div style="font-size:22px">🎄</div>
+        <div style="font-size:20px">🎄</div>
         <div>
           <b>Tabellone</b>
-          <div class="pill">Spazio = Estrai • Z = Undo • R = Reset</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.92);font-weight:900;text-shadow:0 10px 24px rgba(0,0,0,.20)">
+            Spazio = Estrai • Z = Undo • R = Reset
+          </div>
         </div>
       </div>
-      <a class="pill" href="./index.html" style="text-decoration:none;color:inherit">← Home</a>
+
+      <div class="pill">
+        <span>Room:</span>
+        <span class="roomBadge" id="roomBadge">—</span>
+      </div>
     </div>
   </header>
 
-  <main class="grid">
-    <section class="card">
+  <main>
+    <!-- Sticky: ultimo numero + bottoni -->
+    <section class="card sticky">
       <div class="big">
-        <div>
+        <div class="leftCol">
           <div class="label">Ultimo numero</div>
-          <div class="last" id="last">—</div>
+          <div class="lastRow">
+            <div class="last" id="last">—</div>
+            <div class="count" id="count">0 / 90</div>
+          </div>
           <div class="smorfia" id="smorfia">Pronto a iniziare ✨</div>
-        </div>
-        <div style="text-align:right">
-          <div class="label">Estratti</div>
-          <div style="font-size:28px;font-weight:900" id="count">0 / 90</div>
         </div>
       </div>
 
       <div class="controls">
-        <button class="primary" id="draw">🎱 Estrai numero</button>
-        <button class="gold" id="undo" disabled>↩️ Undo</button>
+        <button class="primary" id="draw">🎱 Estrai</button>
+        <button class="gold" id="undo">↩️ Undo</button>
         <button class="danger" id="reset">🧨 Reset</button>
       </div>
 
       <div class="hint">
-        Suggerimento: F11 (schermo intero) e condividi lo schermo in Zoom/Meet/Teams.
-      </div>
-
-      <div class="row2" style="margin-top:14px">
-        <div class="card" style="box-shadow:none;background:var(--card2)">
-          <div class="label" style="margin-bottom:8px">Storico (ordine estrazione)</div>
-          <div class="list" id="history"></div>
-        </div>
-        <div class="card" style="box-shadow:none;background:var(--card2)">
-          <div class="label" style="margin-bottom:8px">Estratti (ordinati)</div>
-          <div class="list" id="sorted"></div>
-        </div>
+        Tutti vedono lo stesso tabellone perché è sincronizzato su Google Sheet.
       </div>
     </section>
 
-    <section class="card">
-      <div class="label" style="margin-bottom:10px">Tabellone 1–90</div>
+    <!-- Board -->
+    <section class="card boardCard">
+      <div class="label">Tabellone 1–90 (5+5)</div>
       <div class="board" id="board"></div>
     </section>
+
+    <!-- Premi (accordion) -->
+    <details open>
+      <summary>
+        <span>🏆 Premi verificati (anti-cheat)</span>
+        <span class="sumRight" id="evCount">0</span>
+      </summary>
+      <div class="eventList" id="events"></div>
+    </details>
+
+    <details>
+      <summary>
+        <span>🧾 Storico (ordine estrazione)</span>
+        <span class="sumRight" id="histCount">0</span>
+      </summary>
+      <div class="list" id="history"></div>
+    </details>
+
+    <details>
+      <summary>
+        <span>🔢 Estratti (ordinati)</span>
+        <span class="sumRight" id="sortedCount">0</span>
+      </summary>
+      <div class="list" id="sorted"></div>
+    </details>
   </main>
 
   <script>
-    // Glitter snow (white + gold)
-    const snow = document.getElementById('snow');
-    const N = 55;
-    for(let i=0;i<N;i++){
-      const f = document.createElement('div');
-      const isGold = Math.random() < 0.22;
-      f.className = 'flake' + (isGold ? ' gold' : '');
-      const x = Math.random()*100;
-      const size = 4 + Math.random()*7;
-      const dur = 7 + Math.random()*14;
-      const dx = (Math.random()*2-1) * 160 + "px";
-      f.style.left = x + "vw";
-      f.style.width = size+"px";
-      f.style.height = size+"px";
-      f.style.animationDuration = dur+"s";
-      f.style.setProperty('--dx', dx);
-      f.style.opacity = (0.35 + Math.random()*0.6).toFixed(2);
-      f.style.filter = `blur(${(Math.random()*0.7).toFixed(2)}px)`;
-      f.style.animationDelay = (-Math.random()*dur) + "s";
-      snow.appendChild(f);
+    // ====== CONFIG ======
+    const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
+
+    function getRoomId(){
+      const url = new URL(location.href);
+      const q = (url.searchParams.get("room") || "").trim().toUpperCase();
+      const ls = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
+      let room = q || ls;
+      if(!room){
+        room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
+      }
+      if(room) localStorage.setItem("tombola_roomId", room);
+      return room;
     }
 
-    // Smorfia base (puoi sostituire la lista con la tua)
-    const SMORFIA = [
-      "",
-      "L'Italia","La bambina","La gatta","Il maiale","La mano","Quella che guarda in terra","Il vaso","La Madonna","La figliolanza",
-      "I fagioli","I topolini","Il soldato","Sant'Antonio","L'ubriaco","Il ragazzo","Il sedere","La disgrazia","Il sangue","La risata",
-      "La festa","La donna nuda","Il pazzo","Lo scemo","Le guardie","Natale","Anna","Il pitale","I seni","Il padre dei bambini",
-      "Le palle del tenente","Il padrone di casa","Il capitone","Gli anni di Cristo","La testa","L'uccellino","Le nacchere","Il monaco","Le botte",
-      "Il cappello","La noia","Il coltello","Il caffè","La donna al balcone","La prigione","Il vino buono","Il denaro","Il morto che parla",
-      "Il morto","Il pane","Il giardino","La mamma","Il vecchio","Il cappotto","La musica","La caduta","Il gobbo","Il pacco",
-      "I peli","Il lamento","Il cacciatore","Il pianto","Il morto ammazzato","La sposa","Le lacrime","La zuppa cotta","Sottosopra",
-      "Il palazzo","L'ommo 'e merda","Il ponte","L'ospedale","La casa","I diavoli","La fontana","La lanterna","La meraviglia",
-      "La puttana","Il ladro","La bocca","I piedi","La tavola imbandita","Il re","Le donne","I fiori","Il maltempo",
-      "La chiesa","Le anime del purgatorio","La bottega","I pidocchi","Il buon cuore","I bambini","La paura","La festa grande","La fortuna"
-    ];
+    // JSONP helper (evita CORS)
+    function jsonp(action, params={}){
+      return new Promise((resolve, reject)=>{
+        const cb = "cb_" + Math.random().toString(36).slice(2);
+        const qs = new URLSearchParams({ action, ...params, callback: cb }).toString();
+        const s = document.createElement("script");
+        const t = setTimeout(()=>{ cleanup(); reject(new Error("Timeout")); }, 12000);
 
-    const LS_KEY = "tombola_natale_state_v2";
-    const state = loadState() || { drawn: [], last: null };
+        function cleanup(){
+          clearTimeout(t);
+          if(window[cb]) delete window[cb];
+          if(s && s.parentNode) s.parentNode.removeChild(s);
+        }
+
+        window[cb] = (data)=>{ cleanup(); resolve(data); };
+        s.src = API_BASE + "?" + qs;
+        s.onerror = ()=>{ cleanup(); reject(new Error("Network error")); };
+        document.body.appendChild(s);
+      });
+    }
+
+    // ====== UI refs ======
+    const roomId = getRoomId();
+    document.getElementById("roomBadge").textContent = roomId || "—";
 
     const elBoard = document.getElementById('board');
     const elLast = document.getElementById('last');
@@ -250,20 +425,30 @@
     const elCount = document.getElementById('count');
     const elHist = document.getElementById('history');
     const elSorted = document.getElementById('sorted');
+    const elEvents = document.getElementById('events');
+
+    const elEvCount = document.getElementById('evCount');
+    const elHistCount = document.getElementById('histCount');
+    const elSortedCount = document.getElementById('sortedCount');
 
     const btnDraw = document.getElementById('draw');
     const btnUndo = document.getElementById('undo');
     const btnReset = document.getElementById('reset');
 
-    const cells = [];
-    for(let n=1;n<=90;n++){
-      const d = document.createElement('div');
-      d.className = 'cell';
-      d.textContent = n;
-      d.dataset.n = n;
-      elBoard.appendChild(d);
-      cells[n] = d;
-    }
+    // Smorfia (come prima)
+    const SMORFIA = [
+      "",
+      "L'Italia","La bambina","La gatta","Il maiale","La mano","Quella che guarda in terra","Il vaso","La Madonna","La figliolanza",
+      "I fagioli","I topolini","Il soldato","Sant'Antonio","L'ubriaco","Il ragazzo","Il sedere","La disgrazia","Il sangue","La risata",
+      "La festa","La donna nuda","Il pazzo","Lo scemo","Le guardie","Natale","Anna","Il pitale","I seni","Il padre dei bambini",
+      "Le palle del tenente","Il padrone di casa","Il capitone","Gli anni di Cristo","La testa","L'uccellellino","Le nacchere","Il monaco","Le botte",
+      "Il cappello","La noia","Il coltello","Il caffè","La donna al balcone","La prigione","Il vino buono","Il denaro","Il morto che parla",
+      "Il morto","Il pane","Il giardino","La mamma","Il vecchio","Il cappotto","La musica","La caduta","Il gobbo","Il pacco",
+      "I peli","Il lamento","Il cacciatore","Il pianto","Il morto ammazzato","La sposa","Le lacrime","La zuppa cotta","Sottosopra",
+      "Il palazzo","L'ommo 'e merda","Il ponte","L'ospedale","La casa","I diavoli","La fontana","La lanterna","La meraviglia",
+      "La puttana","Il ladro","La bocca","I piedi","La tavola imbandita","Il re","Le donne","I fiori","Il maltempo",
+      "La chiesa","Le anime del purgatorio","La bottega","I pidocchi","Il buon cuore","I bambini","La paura","La festa grande","La fortuna"
+    ];
 
     function beep(){
       try{
@@ -279,73 +464,184 @@
       }catch(e){}
     }
 
-    function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
-    function loadState(){
-      try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch(e){ return null; }
+    function escapeHtml_(s){
+      return String(s||"").replace(/[&<>"']/g, m=>({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+    function fmtTime_(iso){
+      try{
+        const d = new Date(iso);
+        return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      }catch(e){ return ""; }
     }
 
-    function render(){
-      for(let n=1;n<=90;n++){
-        cells[n].classList.remove('drawn','last');
+    // ====== Board "a metà" (5 + spacer + 5) ======
+    const cells = []; // by number
+    function buildBoard(){
+      elBoard.innerHTML = "";
+      let n = 1;
+      for(let row=0; row<9; row++){
+        // 5 a sinistra
+        for(let c=0; c<5; c++){
+          const d = document.createElement('div');
+          d.className = 'cell';
+          d.textContent = n;
+          d.dataset.n = n;
+          elBoard.appendChild(d);
+          cells[n] = d;
+          n++;
+        }
+        // spacer
+        const sp = document.createElement('div');
+        sp.className = 'spacer';
+        elBoard.appendChild(sp);
+
+        // 5 a destra
+        for(let c=0; c<5; c++){
+          const d = document.createElement('div');
+          d.className = 'cell';
+          d.textContent = n;
+          d.dataset.n = n;
+          elBoard.appendChild(d);
+          cells[n] = d;
+          n++;
+        }
       }
-      for(const n of state.drawn){
-        cells[n].classList.add('drawn');
+    }
+    buildBoard();
+
+    let lastState = { drawnNumbers: [], last: null, events: [], draws: [] };
+    let lastSig = "";
+
+    function renderFromState(st){
+      const drawn = st.drawnNumbers || [];
+      const last = st.last || null;
+
+      // board highlight
+      for(let i=1;i<=90;i++){
+        if(cells[i]) cells[i].classList.remove('drawn','last');
       }
-      if(state.last){
-        cells[state.last].classList.add('last');
-        elLast.textContent = state.last;
-        elSm.textContent = `💬 Smorfia: ${SMORFIA[state.last] || "—"}`;
-      } else {
+      drawn.forEach(n=>{
+        if(cells[n]) cells[n].classList.add('drawn');
+      });
+
+      if(last && cells[last]){
+        cells[last].classList.add('last');
+        elLast.textContent = last;
+        elSm.textContent = `💬 Smorfia: ${SMORFIA[last] || "—"}`;
+      }else{
         elLast.textContent = "—";
         elSm.textContent = "Pronto a iniziare ✨";
       }
-      elCount.textContent = `${state.drawn.length} / 90`;
+      elCount.textContent = `${drawn.length} / 90`;
 
+      // storico (ordine)
       elHist.innerHTML = "";
-      state.drawn.forEach(n=>{
+      (st.draws || []).forEach(d=>{
         const c = document.createElement('div');
         c.className = 'chip';
-        c.textContent = n;
+        c.textContent = d.n;
         elHist.appendChild(c);
       });
+      elHistCount.textContent = String((st.draws || []).length);
 
+      // ordinati
       elSorted.innerHTML = "";
-      [...state.drawn].sort((a,b)=>a-b).forEach(n=>{
+      [...drawn].sort((a,b)=>a-b).forEach(n=>{
         const c = document.createElement('div');
         c.className = 'chip';
         c.textContent = n;
         elSorted.appendChild(c);
       });
+      elSortedCount.textContent = String(drawn.length);
 
-      btnUndo.disabled = state.drawn.length === 0;
-      btnDraw.disabled = state.drawn.length >= 90;
+      // eventi premi (con numeri vincita)
+      const ev = (st.events || []).filter(x => x.type === "PRIZE");
+      elEvents.innerHTML = "";
+      elEvCount.textContent = String(ev.length);
+
+      if(ev.length === 0){
+        const empty = document.createElement("div");
+        empty.className = "eventMeta";
+        empty.textContent = "Nessun premio ancora.";
+        elEvents.appendChild(empty);
+      }else{
+        ev.slice().reverse().forEach(e=>{
+          const name = escapeHtml_(e.name || e.playerId || "");
+          const cardLabel = `Cartella ${Number(e.cardIndex)+1}`;
+          const rowLabel = e.payload && e.payload.row ? ` • Riga ${e.payload.row}` : "";
+          const win = (e.payload && Array.isArray(e.payload.winNumbers)) ? e.payload.winNumbers : [];
+          const winTxt = win.length ? win.join(", ") : "";
+
+          const item = document.createElement("div");
+          item.className = "eventItem";
+          item.innerHTML = `
+            <div>
+              <b>${escapeHtml_(e.prize)}</b> — ${name}
+              <div class="eventMeta">${cardLabel}${rowLabel}</div>
+              ${winTxt ? `<div class="eventNums">Numeri: ${escapeHtml_(winTxt)}</div>` : ``}
+            </div>
+            <div class="eventMeta">${fmtTime_(e.at)}</div>
+          `;
+          elEvents.appendChild(item);
+        });
+      }
+
+      // bottoni
+      btnDraw.disabled = drawn.length >= 90;
+      btnUndo.disabled = drawn.length === 0;
     }
 
-    function draw(){
-      if(state.drawn.length >= 90) return;
+    async function poll(){
+      if(!roomId) return;
+      try{
+        const st = await jsonp("state", { roomId });
+        if(st && st.ok){
+          const sig = JSON.stringify({
+            last: st.last,
+            draws: (st.draws||[]).length,
+            ev: (st.events||[]).length
+          });
+          if(lastSig && sig !== lastSig) beep();
+          lastSig = sig;
+
+          lastState = st;
+          renderFromState(st);
+        }
+      }catch(e){
+        // silenzioso
+      }
+    }
+
+    async function draw(){
+      if(!roomId) return;
+
+      const drawnSet = new Set(lastState.drawnNumbers || []);
+      if(drawnSet.size >= 90) return;
+
       let n;
-      do { n = Math.floor(Math.random()*90)+1; } while(state.drawn.includes(n));
-      state.drawn.push(n);
-      state.last = n;
-      saveState();
-      beep();
-      render();
+      do { n = Math.floor(Math.random()*90)+1; } while(drawnSet.has(n));
+
+      const res = await jsonp("draw", { roomId, n });
+      if(!res || !res.ok){
+        await poll();
+        return;
+      }
+      await poll();
     }
 
-    function undo(){
-      if(state.drawn.length === 0) return;
-      state.drawn.pop();
-      state.last = state.drawn[state.drawn.length-1] || null;
-      saveState();
-      render();
+    async function undo(){
+      if(!roomId) return;
+      await jsonp("undoDraw", { roomId });
+      await poll();
     }
 
-    function resetAll(){
-      if(!confirm("Reset totale? Cancello estrazioni e storico.")) return;
-      state.drawn = [];
-      state.last = null;
-      saveState();
-      render();
+    async function resetAll(){
+      if(!roomId) return;
+      if(!confirm("Reset partita? Cancello estrazioni + marcature + premi (non cancello i giocatori/cartelle).")) return;
+      await jsonp("resetGame", { roomId });
+      await poll();
     }
 
     btnDraw.onclick = draw;
@@ -358,7 +654,33 @@
       if(e.key.toLowerCase() === 'r'){ resetAll(); }
     });
 
-    render();
+    // Snow
+    const snow = document.getElementById('snow');
+    const N = 26;
+    for(let i=0;i<N;i++){
+      const f = document.createElement('div');
+      const isGold = Math.random() < 0.20;
+      f.className = 'flake' + (isGold ? ' gold' : '');
+      const x = Math.random()*100;
+      const size = 3 + Math.random()*5;
+      const dur = 9 + Math.random()*14;
+      const dx = (Math.random()*2-1) * 140 + "px";
+      f.style.left = x + "vw";
+      f.style.width = size + "px";
+      f.style.height = size + "px";
+      f.style.animationDuration = dur + "s";
+      f.style.setProperty('--dx', dx);
+      f.style.opacity = (0.30 + Math.random()*0.55).toFixed(2);
+      f.style.filter = `blur(${(Math.random()*0.6).toFixed(2)}px)`;
+      f.style.animationDelay = (-Math.random()*dur) + "s";
+      snow.appendChild(f);
+    }
+
+    // init
+    (async ()=>{
+      await poll();
+      setInterval(poll, 1500);
+    })();
   </script>
 </body>
 </html>
