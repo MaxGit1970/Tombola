@@ -1,4 +1,4 @@
-<!-- cartelle.html (MOBILE-FIRST: default 4 cartelle, dimensioni automatiche massime, barra top a scomparsa con 1-4, niente + / -) -->
+<!-- cartelle.html (MOBILE-FIRST: cartelle una sotto l'altra, default 4, dimensioni automatiche massime, barra top a scomparsa con 1-4, niente + / -) -->
 <!doctype html>
 <html lang="it">
 <head>
@@ -106,11 +106,12 @@
       justify-content:center;
     }
 
+    /* UNA SOTTO L'ALTRA */
     .cards{
       width: min(980px, 100%);
       display:grid;
       gap: 10px;
-      grid-template-columns: repeat(2, 1fr); /* mobile: 2 colonne per vedere 4 cartelle */
+      grid-template-columns: 1fr;
       align-items: start;
     }
 
@@ -342,54 +343,47 @@
       container.appendChild(card);
     }
 
-    // --- MOBILE: dimensioni massime automatiche per mostrare 4 cartelle "il più grande possibile" ---
+    // --- Dimensioni "massime possibili" cercando di far stare N cartelle in verticale ---
     const root = document.documentElement;
     const cardsWrap = document.getElementById('cards');
     const topbar = document.getElementById('topbar');
 
-    function applyMaxSizing(){
-      // spazio disponibile (viewport - topbar - padding wrap stimato)
+    function applyMaxSizingForN(n){
       const barH = topbar.getBoundingClientRect().height || 64;
+
       const vh = window.innerHeight;
       const vw = Math.min(window.innerWidth, cardsWrap.getBoundingClientRect().width || window.innerWidth);
 
-      // 2 colonne (default per vedere 4 cartelle)
-      const cols = 2;
-      const outerGap = 10; // coincide con .cards gap
       const wrapPadX = 10 * 2; // .wrap padding laterale
       const usableW = Math.max(260, vw - wrapPadX);
-      const cardW = (usableW - outerGap) / cols;
 
-      // calcolo max cellH da larghezza (9 colonne con gap)
-      // proviamo vari gap (2..1) e scegliamo cellH più grande che ci sta
-      const gap = 2;
-      const cellByW = Math.floor((cardW - (gap * 8) - 2) / 9); // 8 gap tra 9 celle
-      let cellH = Math.max(22, Math.min(48, cellByW)); // limiti ragionevoli
-
-      // stima altezza necessaria per 2 righe di cartelle
-      const rows = 2;
-      const titleF = 14;
-      const titleH = Math.ceil(titleF * 1.3) + 6;
-      const pad = 8;
-      const gridH = (cellH * 3) + (gap * 2);
-      const cardH = (pad*2) + titleH + gridH;
-
+      const outerGap = 10; // coincide con .cards gap
       const wrapPadTop = 10;
       const wrapPadBottom = 18;
-      const usableH = vh - barH - wrapPadTop - wrapPadBottom - 12; // piccola tolleranza
+      const usableH = vh - barH - wrapPadTop - wrapPadBottom - 12; // tolleranza
 
-      const neededH = (rows * cardH) + outerGap;
+      // parametri base (poi verranno adattati)
+      const gap = 2;
+      const pad = 8;
+      const titleF = 14;
+      const titleH = Math.ceil(titleF * 1.3) + 6;
 
-      if(neededH > usableH){
-        // riduci cellH per far stare tutto
-        const maxCardH = Math.floor((usableH - outerGap) / rows);
-        const maxGridH = maxCardH - (pad*2) - titleH;
-        const maxCell = Math.floor((maxGridH - (gap*2)) / 3);
-        cellH = Math.max(18, Math.min(cellH, maxCell));
+      // vincolo larghezza: 9 celle + 8 gap
+      const cellByW = Math.floor((usableW - (gap * 8) - 2) / 9);
+      let cellH = Math.max(18, Math.min(54, cellByW));
+
+      // vincolo altezza: N cartelle in verticale
+      const maxCardH = Math.floor((usableH - outerGap * (n - 1)) / n);
+      const maxGridH = maxCardH - (pad * 2) - titleH;
+      const maxCellByH = Math.floor((maxGridH - (gap * 2)) / 3);
+
+      // se serve, riduci per stare in altezza
+      if (Number.isFinite(maxCellByH) && maxCellByH > 0) {
+        cellH = Math.min(cellH, Math.max(16, maxCellByH));
       }
 
       // font numeri proporzionale
-      const numMax = Math.max(16, Math.min(30, Math.round(cellH * 0.62)));
+      const numMax = Math.max(14, Math.min(34, Math.round(cellH * 0.62)));
       const numMin = Math.max(12, Math.round(numMax * 0.75));
 
       // applica variabili
@@ -401,21 +395,14 @@
 
       root.style.setProperty('--numMin', numMin + 'px');
       root.style.setProperty('--numMax', numMax + 'px');
-      root.style.setProperty('--numVw', (Math.max(3.2, Math.min(5.0, (numMax/6)))) + 'vw');
+      root.style.setProperty('--numVw', (Math.max(3.0, Math.min(6.0, (numMax/6)))) + 'vw');
     }
 
     // --- Numero cartelle: default 4 ---
     let selectedN = 4;
 
-    function setGridForN(n){
-      // Per mobile: 4 => 2x2. Per 3 => 2 colonne, per 2 => 2 colonne, per 1 => 1 colonna.
-      if(n === 1) cardsWrap.style.gridTemplateColumns = '1fr';
-      else cardsWrap.style.gridTemplateColumns = 'repeat(2, 1fr)';
-    }
-
     function generate(){
-      setGridForN(selectedN);
-      applyMaxSizing();
+      applyMaxSizingForN(selectedN);
 
       cardsWrap.innerHTML = "";
       for(let i=0;i<selectedN;i++){
@@ -450,27 +437,24 @@
       const dy = y - lastY;
       lastY = y;
 
-      // se sei in alto, mostrala sempre
       if(y < 10){ setBarHidden(false); return; }
 
-      if(dy > 6 && !barHidden) setBarHidden(true);   // scroll giù
-      if(dy < -6 && barHidden) setBarHidden(false);  // scroll su
+      if(dy > 6 && !barHidden) setBarHidden(true);
+      if(dy < -6 && barHidden) setBarHidden(false);
     }, {passive:true});
 
-    // tap sullo schermo in alto per richiamare la barra
     window.addEventListener('touchstart', (e)=>{
       const t = e.touches && e.touches[0];
       if(!t) return;
       if(t.clientY < 80) setBarHidden(false);
     }, {passive:true});
 
-    // ricalcola dimensioni su resize/orientamento
     window.addEventListener('resize', ()=>{
-      applyMaxSizing();
+      applyMaxSizingForN(selectedN);
     }, {passive:true});
 
     // init
-    applyMaxSizing();
+    applyMaxSizingForN(selectedN);
     generate();
   </script>
 </body>
