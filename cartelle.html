@@ -17,17 +17,14 @@
       --shadow: 0 18px 40px rgba(0,0,0,.14);
       --r: 18px;
 
-      /* top bar */
       --barH: 64px;
 
-      /* sizing (calcolato da JS per essere "il più grande possibile") */
       --cardPad: 5px;
       --gridGap: 1px;
       --cellH: 34px;
       --titleF: 12px;
       --santaF: 22px;
 
-      /* font numeri (clamp controllato da JS) */
       --numMin: 16px;
       --numVw: 6.2vw;
       --numMax: 26px;
@@ -48,7 +45,6 @@
       overflow-x:hidden;
     }
 
-    /* Barra fissa (a scomparsa) */
     .topbar{
       position: fixed;
       left: 0; right: 0; top: 0;
@@ -98,7 +94,6 @@
       border-color: rgba(0,0,0,.18);
     }
 
-    /* Bottone Utente */
     .userBtn{
       border: 1px solid rgba(0,0,0,.12);
       background: rgba(255,255,255,.94);
@@ -127,7 +122,6 @@
       white-space: nowrap;
     }
 
-    /* layout principale */
     .wrap{
       width: 100%;
       padding: calc(var(--barH) + env(safe-area-inset-top) + 10px) 10px 18px;
@@ -135,7 +129,6 @@
       justify-content:center;
     }
 
-    /* UNA SOTTO L'ALTRA */
     .cards{
       width: min(980px, 100%);
       display:grid;
@@ -153,7 +146,6 @@
       box-shadow: var(--shadow);
     }
 
-    /* Titolo: testo centrato, albero a destra, allineati */
     .tTitle{
       margin: 0 0 3px;
       display:grid;
@@ -210,7 +202,6 @@
     }
     .cell.marked::after{ content:""; }
 
-    /* Toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -231,7 +222,6 @@
     }
     .toast.show{ opacity: 1; }
 
-    /* Modal nome */
     .overlay{
       position: fixed;
       inset: 0;
@@ -279,7 +269,6 @@
       background: linear-gradient(180deg, #ffe17b, #ffcc2e);
     }
 
-    /* Glitter snow (leggero) */
     .snow{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
     .flake{
       position:absolute; top:-10px;
@@ -295,11 +284,6 @@
       opacity:.8;
     }
     @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
-
-    @media (prefers-reduced-motion: reduce){
-      .flake{ animation:none; opacity:.30; }
-      .topbar{ transition: none; }
-    }
   </style>
 </head>
 
@@ -308,7 +292,6 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- Modal nome -->
   <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Nome giocatore">
     <div class="modal">
       <h3>👤 Nome giocatore</h3>
@@ -323,7 +306,6 @@
     </div>
   </div>
 
-  <!-- Barra top a scomparsa -->
   <div class="topbar" id="topbar">
     <div class="topbarInner" aria-label="Numero cartelle">
       <div id="qtyRow" style="display:flex;gap:10px;align-items:center">
@@ -359,7 +341,6 @@
       return room;
     }
 
-    // JSONP helper (evita CORS)
     function jsonp(action, params={}){
       return new Promise((resolve, reject)=>{
         const cb = "cb_" + Math.random().toString(36).slice(2);
@@ -380,17 +361,15 @@
       });
     }
 
-    // Toast
     const toast = document.getElementById("toast");
     let toastT = null;
     function showToast(msg){
       toast.textContent = msg;
       toast.classList.add("show");
       clearTimeout(toastT);
-      toastT = setTimeout(()=>toast.classList.remove("show"), 1800);
+      toastT = setTimeout(()=>toast.classList.remove("show"), 2000);
     }
 
-    // Modal nome
     const overlay = document.getElementById("overlay");
     const userBtn = document.getElementById("userBtn");
     const userMini = document.getElementById("userMini");
@@ -401,15 +380,12 @@
       nameInput.value = (localStorage.getItem(nameKey()) || "").trim();
       setTimeout(()=>nameInput.focus(), 50);
     }
-    function closeModal(){
-      overlay.classList.remove("show");
-    }
+    function closeModal(){ overlay.classList.remove("show"); }
 
     document.getElementById("closeModal").onclick = closeModal;
     overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closeModal(); });
     userBtn.onclick = openModal;
 
-    // ====== Identità ======
     const roomId = getRoomId();
 
     function pidKey(){ return "tombola_playerId_" + roomId; }
@@ -433,7 +409,6 @@
       const name = getPlayerName();
       const res = await jsonp("join", { roomId, playerId, name });
       if(res && res.ok){
-        // se non avevo nome, prendo quello default univoco dal server
         if(!getPlayerName()){
           localStorage.setItem(nameKey(), res.name || "");
         }
@@ -445,7 +420,7 @@
 
     document.getElementById("saveName").onclick = async ()=>{
       const val = nameInput.value.trim();
-      localStorage.setItem(nameKey(), val); // può essere vuoto (server userà default univoco)
+      localStorage.setItem(nameKey(), val);
       userMini.textContent = (val || "Anonimo");
       closeModal();
       try{
@@ -456,7 +431,7 @@
       }
     };
 
-    // --- Snow (leggero) ---
+    // Snow
     const snow = document.getElementById('snow');
     const N = 28;
     for(let i=0;i<N;i++){
@@ -478,7 +453,6 @@
       snow.appendChild(f);
     }
 
-    // --- RNG semplice ---
     function rng(){ return Math.random(); }
     function pickUnique(arr, k){
       const a = arr.slice();
@@ -578,15 +552,18 @@
             });
 
             if(!res || !res.ok){
-              // rollback se server rifiuta (anti-cheat)
               c.classList.toggle('marked');
               showToast(res && res.error ? res.error : "Marcatura rifiutata");
               return;
             }
 
-            // premi nuovi
+            // ✅ toast con numeri vincenti (se presenti)
             if(Array.isArray(res.newly) && res.newly.length){
-              showToast("🎉 " + res.newly.map(x=>x.prize).join(", "));
+              const msg = res.newly.map(x=>{
+                const wn = Array.isArray(x.winNumbers) ? x.winNumbers : [];
+                return wn.length ? `${x.prize} (${wn.join(", ")})` : x.prize;
+              }).join(" • ");
+              showToast("🎉 " + msg);
             }
           }, {passive:true});
         }
@@ -598,7 +575,6 @@
       container.appendChild(card);
     }
 
-    // --- Dimensioni "massime possibili" cercando di far stare N cartelle in verticale ---
     const root = document.documentElement;
     const cardsWrap = document.getElementById('cards');
     const topbar = document.getElementById('topbar');
@@ -648,12 +624,10 @@
       root.style.setProperty('--numVw', '6.2vw');
     }
 
-    // --- Numero cartelle: default 4 ---
     let selectedN = 4;
     let currentGrids = [];
 
     async function registerAllCards(){
-      // salva su backend tutte le cartelle del player (serve per anti-cheat)
       const payload = currentGrids.map((grid, i)=>({ cardIndex: i, grid }));
       const res = await jsonp("registerCards", {
         roomId,
@@ -676,7 +650,6 @@
         renderCard(cardsWrap, i, g);
       }
 
-      // registra cartelle dopo join
       try{
         await join();
         await registerAllCards();
@@ -685,7 +658,6 @@
       }
     }
 
-    // Click bottoni 1-4
     const qtyRow = document.getElementById('qtyRow');
     qtyRow.addEventListener('click', (e)=>{
       const btn = e.target.closest('button[data-n]');
@@ -698,7 +670,6 @@
       generate();
     });
 
-    // Barra a scomparsa
     let lastY = window.scrollY;
     let barHidden = false;
 
@@ -727,14 +698,11 @@
       applyMaxSizingForN(selectedN);
     }, {passive:true});
 
-    // init
     (async ()=>{
       try{
         await join();
         userMini.textContent = (localStorage.getItem(nameKey()) || "Anonimo");
-      }catch(e){
-        // ok
-      }
+      }catch(e){}
       applyMaxSizingForN(selectedN);
       generate();
     })();

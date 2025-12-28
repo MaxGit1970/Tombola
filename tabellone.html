@@ -1,11 +1,10 @@
-<!-- tabellone.html (MOBILE-FIRST + Google Sheet backend + board "a metà" + premi con numeri vincita) -->
+<!-- tabellone.html (MOBILE-FIRST + Google Sheet backend + tabellone a metà + logica premi "prima volta") -->
 <!doctype html>
 <html lang="it">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Tabellone – Tombola Natalizia</title>
-
   <style>
     :root{
       --bgA:#ff1e3a;
@@ -14,24 +13,12 @@
       --green:#0a8f3f;
 
       --txt:#141414;
-      --card: rgba(255,255,255,.86);
-      --card2: rgba(255,255,255,.74);
+      --card: rgba(255,255,255,.82);
+      --card2: rgba(255,255,255,.72);
       --stroke: rgba(255,255,255,.75);
-      --shadow: 0 18px 44px rgba(0,0,0,.16);
+      --shadow: 0 18px 42px rgba(0,0,0,.18);
       --r: 18px;
-
-      --gap: 10px;
-
-      /* board sizing */
-      --cellR: 14px;
-      --cellF: clamp(12px, 3.5vw, 18px);
-      --boardGap: 6px;
-      --midGap: 14px;
-
-      /* sticky bar height approx */
-      --stickyTop: calc(env(safe-area-inset-top) + 10px);
     }
-
     *{box-sizing:border-box}
     body{
       margin:0; min-height:100svh; color:var(--txt);
@@ -44,242 +31,129 @@
       overflow-x:hidden;
     }
 
-    header{
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 12px 12px 8px;
-    }
-    .top{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
-    }
-    .brand{
-      display:flex; gap:10px; align-items:center;
-    }
-    .brand b{font-size:16px}
+    header{max-width:820px;margin:0 auto;padding:12px 10px}
+    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:10px;align-items:center}
+    .brand b{font-size:17px}
     .pill{
       border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.84);
-      padding:7px 10px;
-      border-radius:999px;
-      color: rgba(0,0,0,.70);
-      font-size:12.5px;
+      background: rgba(255,255,255,.82);
+      padding:7px 10px; border-radius:999px;
+      color: rgba(0,0,0,.70); font-size:13px;
       text-decoration:none;
       display:inline-flex; align-items:center; gap:8px;
-      box-shadow: 0 10px 22px rgba(0,0,0,.10);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
     }
-    .roomBadge{
-      font-weight: 1000;
-      letter-spacing: .3px;
-    }
+    .roomBadge{font-weight:1000; letter-spacing:.3px}
 
-    main{
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 0 12px 70px;
-      display:flex;
-      flex-direction:column;
-      gap: var(--gap);
-    }
-
+    main{max-width:820px;margin:0 auto;padding:0 10px 56px}
     .card{
       border:1px solid var(--stroke);
       background: var(--card);
       border-radius: var(--r);
       box-shadow: var(--shadow);
       padding: 12px;
+      margin-bottom: 10px;
     }
 
-    /* Sticky compact control bar */
-    .sticky{
-      position: sticky;
-      top: var(--stickyTop);
-      z-index: 20;
-    }
     .big{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding: 10px 12px;
-      border-radius: 16px;
-      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.74));
+      display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+      padding: 9px 10px; border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.72));
       border:1px solid rgba(0,0,0,.10);
+      margin-bottom:10px;
     }
-    .leftCol{ display:flex; flex-direction:column; gap:4px; }
+    .last{font-size:56px; font-weight:900; letter-spacing:-1px; line-height:1}
     .label{color:rgba(0,0,0,.62); font-size:12px}
-    .lastRow{display:flex; gap:10px; align-items:baseline}
-    .last{
-      font-size: clamp(44px, 10vw, 66px);
-      font-weight: 1000;
-      letter-spacing:-1px;
-      line-height:1;
-    }
-    .count{
-      font-size: 18px;
-      font-weight: 1000;
-      color: rgba(0,0,0,.72);
-      white-space:nowrap;
-    }
-    .smorfia{
-      font-size: 14px;
-      color: rgba(0,0,0,.78);
-      line-height: 1.25;
-    }
+    .smorfia{margin-top:4px; font-size:15px}
 
-    .controls{
+    .controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+    button{
+      cursor:pointer; border:1px solid rgba(0,0,0,.12);
+      border-radius:14px; padding:11px 12px;
+      font-weight:900; letter-spacing:.2px;
+      background: rgba(255,255,255,.85);
+      color:#111;
+      box-shadow: 0 12px 26px rgba(0,0,0,.15);
+      min-height: 44px;
+      flex: 1 1 140px;
+    }
+    button.primary{ background: linear-gradient(180deg, #ff6b7c, #ff1e3a); }
+    button.gold{ background: linear-gradient(180deg, #ffe17b, #ffcc2e); }
+    button.danger{ background: rgba(0,0,0,.06); }
+    button:disabled{opacity:.55; cursor:not-allowed}
+    .hint{color:rgba(0,0,0,.62); font-size:12px; margin-top:8px; line-height:1.35; text-align:center}
+
+    /* ✅ TABELLONE A METÀ (celle più piccole, numeri grandi) */
+    .boardWrap{
       display:flex;
       gap:10px;
-      margin-top:10px;
+      align-items:flex-start;
     }
-    button{
-      cursor:pointer;
-      border:1px solid rgba(0,0,0,.12);
-      border-radius:14px;
-      padding:12px 12px;
-      font-weight:1000;
-      letter-spacing:.2px;
-      background: rgba(255,255,255,.90);
-      color:#111;
-      box-shadow: 0 14px 30px rgba(0,0,0,.14);
-      min-height: 46px;
-      flex: 1 1 0;
-      -webkit-tap-highlight-color: transparent;
-    }
-    button.primary{
-      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
-    }
-    button.gold{
-      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
-    }
-    button.danger{
-      background: rgba(0,0,0,.06);
-    }
-    button:disabled{opacity:.55; cursor:not-allowed}
-
-    /* Board (a metà) */
-    .boardCard .label{ margin-bottom: 10px; }
-    .board{
+    .boardHalf{
+      flex:1;
       display:grid;
-      grid-template-columns: repeat(5, 1fr) var(--midGap) repeat(5, 1fr);
-      gap: var(--boardGap);
-    }
-    .spacer{
-      width: var(--midGap);
-      height: 1px;
+      grid-template-columns: repeat(5, minmax(22px, 1fr));
+      gap:3px;
     }
     .cell{
-      aspect-ratio: 1/1;
+      aspect-ratio:1/1;
       display:flex; align-items:center; justify-content:center;
-      border-radius: var(--cellR);
+      border-radius: 11px;
       border:1px solid rgba(0,0,0,.10);
-      background: rgba(255,255,255,.92);
+      background: rgba(255,255,255,.90);
       font-weight:1000;
       user-select:none;
-      font-size: var(--cellF);
+      font-size: clamp(16px, 5.1vw, 24px);
+      line-height:1;
       position:relative;
     }
     .cell.drawn{
       background: linear-gradient(180deg, rgba(10,143,63,.30), rgba(10,143,63,.14));
       border-color: rgba(10,143,63,.55);
-      box-shadow: 0 12px 26px rgba(10,143,63,.14);
+      box-shadow: 0 10px 20px rgba(10,143,63,.14);
     }
     .cell.last::after{
       content:"✨";
-      position:absolute; top:-10px; right:-10px;
-      font-size:18px;
+      position:absolute; top:-8px; right:-8px;
+      font-size:16px;
       filter: drop-shadow(0 8px 12px rgba(0,0,0,.25));
     }
 
-    /* Details (accordion) */
-    details{
-      border:1px solid rgba(255,255,255,.65);
-      background: var(--card2);
-      border-radius: 16px;
-      padding: 10px 10px;
-      box-shadow: 0 14px 30px rgba(0,0,0,.10);
-    }
-    summary{
-      list-style:none;
-      cursor:pointer;
-      font-weight: 1000;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      -webkit-tap-highlight-color: transparent;
-      user-select:none;
-    }
-    summary::-webkit-details-marker{ display:none; }
-    .sumRight{
-      font-size: 12px;
-      color: rgba(0,0,0,.65);
-      font-weight: 900;
-      white-space: nowrap;
-    }
-
-    .eventList{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      max-height: 220px;
-      overflow:auto;
-      padding-right:6px;
-      margin-top:10px;
-    }
-    .eventItem{
-      border:1px solid rgba(0,0,0,.10);
-      background: rgba(255,255,255,.86);
-      border-radius: 14px;
-      padding: 10px 12px;
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      align-items:flex-start;
-      box-shadow: 0 10px 22px rgba(0,0,0,.08);
-    }
-    .eventItem b{font-size:14px}
-    .eventMeta{font-size:12px;color:rgba(0,0,0,.62); line-height:1.25}
-    .eventNums{
-      margin-top:4px;
-      font-size:12px;
-      font-weight: 1000;
-      color: rgba(0,0,0,.78);
-    }
+    /* ✅ BOX in fondo pagina */
+    .rowBottom{display:grid; gap:10px; grid-template-columns:1fr; margin-top:10px;}
     .list{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      max-height: 200px;
-      overflow:auto;
-      padding-right:6px;
-      margin-top:10px;
+      display:flex; flex-wrap:wrap; gap:8px;
+      max-height: 190px; overflow:auto; padding-right:6px;
     }
     .chip{
       border:1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.85);
+      padding:6px 10px; border-radius:999px;
+      font-weight:900; color:#111
+    }
+
+    /* ✅ Premi verificati: UNA RIGA SOLA (scroll orizzontale se lunga) */
+    .eventList{display:flex; flex-direction:column; gap:8px; max-height: 260px; overflow:auto;}
+    .eventLine{
+      border:1px solid rgba(0,0,0,.10);
       background: rgba(255,255,255,.88);
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:1000;
-      color:#111;
+      border-radius: 14px;
+      padding: 10px 12px;
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
+
+      white-space: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      font-weight: 1000;
       font-size: 13px;
     }
-
-    .hint{
-      color:rgba(0,0,0,.62);
-      font-size:12.5px;
-      line-height:1.35;
-      text-align:center;
-      margin-top:10px;
+    .eventLine small{
+      font-weight: 900;
+      color: rgba(0,0,0,.58);
     }
 
-    /* Glitter snow */
-    .snow{position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0}
+    /* Snow */
+    .snow{position:fixed; inset:0; pointer-events:none; overflow:hidden}
     .flake{
       position:absolute; top:-10px; width:6px; height:6px; border-radius:50%;
       background: rgba(255,255,255,.95);
@@ -287,30 +161,21 @@
       opacity:.85;
       animation: fall linear infinite;
     }
-    .flake.gold{
-      background: rgba(255,204,46,.95);
-      box-shadow: 0 0 14px rgba(255,204,46,.45);
-      opacity:.8;
-    }
+    .flake.gold{ background: rgba(255,204,46,.95); box-shadow: 0 0 14px rgba(255,204,46,.45); opacity:.8; }
     @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
-    @media (prefers-reduced-motion: reduce){
-      .flake{ animation:none; opacity:.30; }
-    }
+    @media (prefers-reduced-motion: reduce){ .flake{ animation:none; opacity:.30; } }
   </style>
 </head>
-
 <body>
   <div class="snow" id="snow"></div>
 
   <header>
     <div class="top">
       <div class="brand">
-        <div style="font-size:20px">🎄</div>
+        <div style="font-size:22px">🎄</div>
         <div>
           <b>Tabellone</b>
-          <div style="font-size:12px;color:rgba(255,255,255,.92);font-weight:900;text-shadow:0 10px 24px rgba(0,0,0,.20)">
-            Spazio = Estrai • Z = Undo • R = Reset
-          </div>
+          <div class="pill">Spazio = Estrai • Z = Undo • R = Reset</div>
         </div>
       </div>
 
@@ -322,21 +187,22 @@
   </header>
 
   <main>
-    <!-- Sticky: ultimo numero + bottoni -->
-    <section class="card sticky">
+    <!-- ✅ SOLO HEADER/CONTROLLI -->
+    <section class="card">
       <div class="big">
-        <div class="leftCol">
+        <div>
           <div class="label">Ultimo numero</div>
-          <div class="lastRow">
-            <div class="last" id="last">—</div>
-            <div class="count" id="count">0 / 90</div>
-          </div>
+          <div class="last" id="last">—</div>
           <div class="smorfia" id="smorfia">Pronto a iniziare ✨</div>
+        </div>
+        <div style="text-align:right">
+          <div class="label">Estratti</div>
+          <div style="font-size:26px;font-weight:900" id="count">0 / 90</div>
         </div>
       </div>
 
       <div class="controls">
-        <button class="primary" id="draw">🎱 Estrai</button>
+        <button class="primary" id="draw">🎱 Estrai numero</button>
         <button class="gold" id="undo">↩️ Undo</button>
         <button class="danger" id="reset">🧨 Reset</button>
       </div>
@@ -346,36 +212,34 @@
       </div>
     </section>
 
-    <!-- Board -->
-    <section class="card boardCard">
-      <div class="label">Tabellone 1–90 (5+5)</div>
-      <div class="board" id="board"></div>
+    <!-- ✅ TABELLONE PRIMA -->
+    <section class="card">
+      <div class="label" style="margin-bottom:8px">Tabellone 1–90</div>
+      <div class="boardWrap">
+        <div class="boardHalf" id="boardL"></div>
+        <div class="boardHalf" id="boardR"></div>
+      </div>
     </section>
 
-    <!-- Premi (accordion) -->
-    <details open>
-      <summary>
-        <span>🏆 Premi verificati (anti-cheat)</span>
-        <span class="sumRight" id="evCount">0</span>
-      </summary>
-      <div class="eventList" id="events"></div>
-    </details>
+    <!-- ✅ BOX IN FONDO -->
+    <section class="card" style="background:var(--card2)">
+      <div class="rowBottom">
+        <div class="card" style="box-shadow:none;background:rgba(255,255,255,.65); margin:0">
+          <div class="label" style="margin-bottom:8px">Premi verificati (anti-cheat)</div>
+          <div class="eventList" id="events"></div>
+        </div>
 
-    <details>
-      <summary>
-        <span>🧾 Storico (ordine estrazione)</span>
-        <span class="sumRight" id="histCount">0</span>
-      </summary>
-      <div class="list" id="history"></div>
-    </details>
+        <div class="card" style="box-shadow:none;background:rgba(255,255,255,.65); margin:0">
+          <div class="label" style="margin-bottom:8px">Storico (ordine estrazione)</div>
+          <div class="list" id="history"></div>
+        </div>
 
-    <details>
-      <summary>
-        <span>🔢 Estratti (ordinati)</span>
-        <span class="sumRight" id="sortedCount">0</span>
-      </summary>
-      <div class="list" id="sorted"></div>
-    </details>
+        <div class="card" style="box-shadow:none;background:rgba(255,255,255,.65); margin:0">
+          <div class="label" style="margin-bottom:8px">Estratti (ordinati)</div>
+          <div class="list" id="sorted"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -394,7 +258,7 @@
       return room;
     }
 
-    // JSONP helper (evita CORS)
+    // JSONP helper
     function jsonp(action, params={}){
       return new Promise((resolve, reject)=>{
         const cb = "cb_" + Math.random().toString(36).slice(2);
@@ -419,7 +283,6 @@
     const roomId = getRoomId();
     document.getElementById("roomBadge").textContent = roomId || "—";
 
-    const elBoard = document.getElementById('board');
     const elLast = document.getElementById('last');
     const elSm = document.getElementById('smorfia');
     const elCount = document.getElementById('count');
@@ -427,21 +290,19 @@
     const elSorted = document.getElementById('sorted');
     const elEvents = document.getElementById('events');
 
-    const elEvCount = document.getElementById('evCount');
-    const elHistCount = document.getElementById('histCount');
-    const elSortedCount = document.getElementById('sortedCount');
-
     const btnDraw = document.getElementById('draw');
     const btnUndo = document.getElementById('undo');
     const btnReset = document.getElementById('reset');
 
-    // Smorfia (come prima)
+    const elBoardL = document.getElementById("boardL");
+    const elBoardR = document.getElementById("boardR");
+
     const SMORFIA = [
       "",
       "L'Italia","La bambina","La gatta","Il maiale","La mano","Quella che guarda in terra","Il vaso","La Madonna","La figliolanza",
       "I fagioli","I topolini","Il soldato","Sant'Antonio","L'ubriaco","Il ragazzo","Il sedere","La disgrazia","Il sangue","La risata",
       "La festa","La donna nuda","Il pazzo","Lo scemo","Le guardie","Natale","Anna","Il pitale","I seni","Il padre dei bambini",
-      "Le palle del tenente","Il padrone di casa","Il capitone","Gli anni di Cristo","La testa","L'uccellellino","Le nacchere","Il monaco","Le botte",
+      "Le palle del tenente","Il padrone di casa","Il capitone","Gli anni di Cristo","La testa","L'uccellino","Le nacchere","Il monaco","Le botte",
       "Il cappello","La noia","Il coltello","Il caffè","La donna al balcone","La prigione","Il vino buono","Il denaro","Il morto che parla",
       "Il morto","Il pane","Il giardino","La mamma","Il vecchio","Il cappotto","La musica","La caduta","Il gobbo","Il pacco",
       "I peli","Il lamento","Il cacciatore","Il pianto","Il morto ammazzato","La sposa","Le lacrime","La zuppa cotta","Sottosopra",
@@ -449,6 +310,19 @@
       "La puttana","Il ladro","La bocca","I piedi","La tavola imbandita","Il re","Le donne","I fiori","Il maltempo",
       "La chiesa","Le anime del purgatorio","La bottega","I pidocchi","Il buon cuore","I bambini","La paura","La festa grande","La fortuna"
     ];
+
+    // crea celle 1..90 in due metà (5+5)
+    const cells = [];
+    for(let n=1;n<=90;n++){
+      const col = (n-1)%10;              // 0..9
+      const d = document.createElement('div');
+      d.className = 'cell';
+      d.textContent = n;
+      d.dataset.n = n;
+      if(col < 5) elBoardL.appendChild(d);
+      else elBoardR.appendChild(d);
+      cells[n] = d;
+    }
 
     function beep(){
       try{
@@ -464,11 +338,9 @@
       }catch(e){}
     }
 
-    function escapeHtml_(s){
-      return String(s||"").replace(/[&<>"']/g, m=>({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[m]));
-    }
+    let lastState = { drawnNumbers: [], last: null, events: [] };
+    let lastSig = "";
+
     function fmtTime_(iso){
       try{
         const d = new Date(iso);
@@ -476,56 +348,36 @@
       }catch(e){ return ""; }
     }
 
-    // ====== Board "a metà" (5 + spacer + 5) ======
-    const cells = []; // by number
-    function buildBoard(){
-      elBoard.innerHTML = "";
-      let n = 1;
-      for(let row=0; row<9; row++){
-        // 5 a sinistra
-        for(let c=0; c<5; c++){
-          const d = document.createElement('div');
-          d.className = 'cell';
-          d.textContent = n;
-          d.dataset.n = n;
-          elBoard.appendChild(d);
-          cells[n] = d;
-          n++;
-        }
-        // spacer
-        const sp = document.createElement('div');
-        sp.className = 'spacer';
-        elBoard.appendChild(sp);
-
-        // 5 a destra
-        for(let c=0; c<5; c++){
-          const d = document.createElement('div');
-          d.className = 'cell';
-          d.textContent = n;
-          d.dataset.n = n;
-          elBoard.appendChild(d);
-          cells[n] = d;
-          n++;
+    // Se il backend non mette drawIndex negli eventi, lo deduciamo dagli orari draw.createdAt <= event.at
+    function inferDrawIndex_(eventAtIso, draws){
+      if(!eventAtIso || !Array.isArray(draws) || !draws.length) return null;
+      // draws sono già ordinati per drawIndex crescente dal backend
+      let lo = 0, hi = draws.length - 1, best = null;
+      while(lo <= hi){
+        const mid = (lo + hi) >> 1;
+        const d = draws[mid];
+        const at = String(d.at || "");
+        if(at && at <= eventAtIso){
+          best = d;
+          lo = mid + 1;
+        }else{
+          hi = mid - 1;
         }
       }
+      return best ? Number(best.drawIndex) : null;
     }
-    buildBoard();
-
-    let lastState = { drawnNumbers: [], last: null, events: [], draws: [] };
-    let lastSig = "";
 
     function renderFromState(st){
       const drawn = st.drawnNumbers || [];
       const last = st.last || null;
 
-      // board highlight
-      for(let i=1;i<=90;i++){
-        if(cells[i]) cells[i].classList.remove('drawn','last');
+      // board
+      for(let n=1;n<=90;n++){
+        cells[n].classList.remove('drawn','last');
       }
       drawn.forEach(n=>{
         if(cells[n]) cells[n].classList.add('drawn');
       });
-
       if(last && cells[last]){
         cells[last].classList.add('last');
         elLast.textContent = last;
@@ -536,15 +388,14 @@
       }
       elCount.textContent = `${drawn.length} / 90`;
 
-      // storico (ordine)
+      // ✅ storico: più recente a sinistra => render in reverse
       elHist.innerHTML = "";
-      (st.draws || []).forEach(d=>{
+      (st.draws || []).slice().reverse().forEach(d=>{
         const c = document.createElement('div');
         c.className = 'chip';
         c.textContent = d.n;
         elHist.appendChild(c);
       });
-      elHistCount.textContent = String((st.draws || []).length);
 
       // ordinati
       elSorted.innerHTML = "";
@@ -554,41 +405,72 @@
         c.textContent = n;
         elSorted.appendChild(c);
       });
-      elSortedCount.textContent = String(drawn.length);
 
-      // eventi premi (con numeri vincita)
-      const ev = (st.events || []).filter(x => x.type === "PRIZE");
+      // ✅ premi verificati: mostra SOLO la prima volta per premio, ma include tutti i vincitori di quella prima estrazione
+      const prizeOrder = ["AMBO","TERNO","QUATERNA","CINQUINA","TOMBOLA"];
+      const events = (st.events || []).filter(x => x.type === "PRIZE" && prizeOrder.includes(String(x.prize||"")));
+
+      // arricchisci con drawIndex (payload.drawIndex preferito, altrimenti inferito)
+      const enriched = events.map(e=>{
+        const payload = e.payload || {};
+        const di = Number(payload.drawIndex);
+        const drawIndex = Number.isFinite(di) ? di : inferDrawIndex_(String(e.at||""), st.draws || []);
+        return {...e, _drawIndex: drawIndex};
+      }).filter(e => Number.isFinite(e._drawIndex));
+
+      // calcola "prima estrazione" per ogni premio
+      const firstDrawByPrize = new Map();
+      for(const e of enriched){
+        const pr = String(e.prize);
+        const di = e._drawIndex;
+        const cur = firstDrawByPrize.get(pr);
+        if(cur == null || di < cur) firstDrawByPrize.set(pr, di);
+      }
+
+      // costruisci righe (una riga per premio)
       elEvents.innerHTML = "";
-      elEvCount.textContent = String(ev.length);
-
-      if(ev.length === 0){
+      const any = prizeOrder.some(pr => firstDrawByPrize.has(pr));
+      if(!any){
         const empty = document.createElement("div");
-        empty.className = "eventMeta";
+        empty.style.color = "rgba(0,0,0,.62)";
+        empty.style.fontWeight = "900";
         empty.textContent = "Nessun premio ancora.";
         elEvents.appendChild(empty);
       }else{
-        ev.slice().reverse().forEach(e=>{
-          const name = escapeHtml_(e.name || e.playerId || "");
-          const cardLabel = `Cartella ${Number(e.cardIndex)+1}`;
-          const rowLabel = e.payload && e.payload.row ? ` • Riga ${e.payload.row}` : "";
-          const win = (e.payload && Array.isArray(e.payload.winNumbers)) ? e.payload.winNumbers : [];
-          const winTxt = win.length ? win.join(", ") : "";
+        for(const pr of prizeOrder){
+          if(!firstDrawByPrize.has(pr)) continue;
 
-          const item = document.createElement("div");
-          item.className = "eventItem";
-          item.innerHTML = `
-            <div>
-              <b>${escapeHtml_(e.prize)}</b> — ${name}
-              <div class="eventMeta">${cardLabel}${rowLabel}</div>
-              ${winTxt ? `<div class="eventNums">Numeri: ${escapeHtml_(winTxt)}</div>` : ``}
-            </div>
-            <div class="eventMeta">${fmtTime_(e.at)}</div>
-          `;
-          elEvents.appendChild(item);
-        });
+          const di = firstDrawByPrize.get(pr);
+          const winners = enriched
+            .filter(e => String(e.prize) === pr && e._drawIndex === di)
+            .sort((a,b)=>{
+              const an = String(a.name||a.playerId||"");
+              const bn = String(b.name||b.playerId||"");
+              if(an < bn) return -1;
+              if(an > bn) return 1;
+              return (Number(a.cardIndex)||0) - (Number(b.cardIndex)||0);
+            });
+
+          // stringa unica: PRIZE — Name — Cartella X — Numeri: ...
+          const parts = [pr];
+          for(const w of winners){
+            const name = String(w.name || w.playerId || "").trim() || "—";
+            const card = Number(w.cardIndex) + 1;
+            const win = Array.isArray(w.payload && w.payload.winNumbers) ? w.payload.winNumbers : [];
+            const nums = win.length ? win.join(", ") : "—";
+            parts.push(`${name} — Cartella ${card} — Numeri: ${nums}`);
+          }
+
+          const line = document.createElement("div");
+          line.className = "eventLine";
+
+          // tempo: prendiamo l'orario del primo evento (solo come info in coda)
+          const t = winners.length ? fmtTime_(winners[0].at) : "";
+          line.textContent = parts.join(" — ") + (t ? `  •  ${t}` : "");
+          elEvents.appendChild(line);
+        }
       }
 
-      // bottoni
       btnDraw.disabled = drawn.length >= 90;
       btnUndo.disabled = drawn.length === 0;
     }
@@ -598,25 +480,18 @@
       try{
         const st = await jsonp("state", { roomId });
         if(st && st.ok){
-          const sig = JSON.stringify({
-            last: st.last,
-            draws: (st.draws||[]).length,
-            ev: (st.events||[]).length
-          });
+          const sig = JSON.stringify({last:st.last, evCount:(st.events||[]).length});
           if(lastSig && sig !== lastSig) beep();
           lastSig = sig;
 
           lastState = st;
           renderFromState(st);
         }
-      }catch(e){
-        // silenzioso
-      }
+      }catch(e){}
     }
 
     async function draw(){
       if(!roomId) return;
-
       const drawnSet = new Set(lastState.drawnNumbers || []);
       if(drawnSet.size >= 90) return;
 
@@ -624,7 +499,7 @@
       do { n = Math.floor(Math.random()*90)+1; } while(drawnSet.has(n));
 
       const res = await jsonp("draw", { roomId, n });
-      if(!res || !res.ok){
+      if(!res.ok){
         await poll();
         return;
       }
@@ -639,7 +514,7 @@
 
     async function resetAll(){
       if(!roomId) return;
-      if(!confirm("Reset partita? Cancello estrazioni + marcature + premi (non cancello i giocatori/cartelle).")) return;
+      if(!confirm("Reset partita? Cancello estrazioni + marcature + premi.")) return;
       await jsonp("resetGame", { roomId });
       await poll();
     }
@@ -676,7 +551,6 @@
       snow.appendChild(f);
     }
 
-    // init
     (async ()=>{
       await poll();
       setInterval(poll, 1500);

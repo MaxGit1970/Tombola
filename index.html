@@ -11,16 +11,13 @@
       --bgA:#ff1e3a;
       --bgB:#c4001a;
       --gold:#ffcc2e;
-      --green:#0a8f3f;
-
       --txt:#141414;
+
       --stroke: rgba(255,255,255,.75);
       --shadow: 0 20px 55px rgba(0,0,0,.18);
       --r: 22px;
     }
-
     *{ box-sizing:border-box; }
-
     body{
       margin:0;
       min-height: 100svh;
@@ -32,13 +29,11 @@
         radial-gradient(900px 700px at 70% 85%, rgba(255,255,255,.22) 0%, transparent 60%),
         linear-gradient(135deg, var(--bgA), var(--bgB));
       overflow-x:hidden;
-
       display:flex;
       justify-content:center;
       align-items:center;
       padding: 18px 0;
     }
-
     .wrap{
       width: 100%;
       max-width: 980px;
@@ -48,7 +43,6 @@
       gap: 18px;
       align-items:center;
     }
-
     .hero{
       width:100%;
       position: relative;
@@ -60,7 +54,6 @@
       overflow: hidden;
       text-align: center;
     }
-
     .orn{
       position:absolute;
       inset:-140px -140px auto auto;
@@ -75,113 +68,68 @@
       transform: rotate(18deg);
       pointer-events:none;
     }
-
     h1{
       margin: 10px 0 10px;
       font-size: clamp(30px, 6vw, 52px);
       line-height: 1.05;
       letter-spacing: -0.3px;
     }
-
     .sub{
-      margin: 0 auto 14px;
+      margin: 0 auto 12px;
       max-width: 70ch;
       color: rgba(0,0,0,.72);
-      font-size: 16px;
-      line-height: 1.45;
+      font-size: 15px;
+      line-height: 1.5;
     }
-
-    .roomBox{
-      margin: 10px auto 0;
-      width: min(520px, 100%);
-      border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.84);
-      border-radius: 18px;
-      padding: 12px;
-      box-shadow: 0 14px 30px rgba(0,0,0,.14);
-      text-align:left;
-    }
-    .roomRow{
+    .roomLine{
       display:flex;
-      justify-content:space-between;
+      justify-content:center;
       gap:10px;
-      align-items:center;
       flex-wrap:wrap;
+      align-items:center;
+      margin-top: 10px;
     }
-    .roomLabel{ font-size:12px; color:rgba(0,0,0,.62); font-weight:900; }
-    .roomCode{
-      font-size:20px;
-      font-weight:1000;
-      letter-spacing: .8px;
-      background: rgba(255,255,255,.9);
-      border:1px solid rgba(0,0,0,.10);
-      padding: 8px 10px;
-      border-radius: 14px;
-      min-width: 140px;
-      text-align:center;
+    .pill{
+      border:1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.86);
+      padding:8px 12px;
+      border-radius:999px;
+      font-weight: 1000;
+      letter-spacing: .3px;
     }
-
     .ctaRow{
       display:flex;
       gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
-      margin-top: 12px;
+      margin-top: 14px;
     }
-
-    .btn{
-      border: 1px solid rgba(0,0,0,.12);
-      box-shadow: 0 14px 30px rgba(0,0,0,.18);
+    button.btn, a.btn{
+      text-decoration:none;
+      padding: 14px 16px;
       border-radius: 16px;
       font-weight: 900;
       letter-spacing: .2px;
-      padding: 14px 16px;
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      justify-content:center;
+      border: 1px solid rgba(0,0,0,.12);
+      box-shadow: 0 14px 30px rgba(0,0,0,.18);
+      user-select: none;
+      color: #111;
       min-height: 48px;
       min-width: min(420px, 100%);
       width: 100%;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
-      text-decoration:none;
-      color:#111;
-      user-select:none;
       cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
+      background: rgba(255,255,255,.85);
     }
-
-    @media (min-width: 620px){
-      .btn{ width:auto; min-width: 280px; }
-    }
-
     .btn.gold{ background: linear-gradient(180deg, #ffe17b, #ffcc2e); }
     .btn.red{ background: linear-gradient(180deg, #ff6b7c, #ff1e3a); }
-    .btn:disabled, .btn.disabled{
-      opacity:.55;
-      pointer-events:none;
-    }
-
-    .miniRow{
-      margin-top:10px;
-      display:flex;
-      gap:10px;
-      justify-content:center;
-      flex-wrap:wrap;
-    }
-    .miniBtn{
-      border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.86);
-      border-radius: 999px;
-      padding: 10px 12px;
-      font-weight: 900;
-      cursor:pointer;
-      box-shadow: 0 12px 24px rgba(0,0,0,.12);
-      min-height: 42px;
-    }
 
     footer{
       text-align: center;
-      font-size: clamp(24px, 4.5vw, 44px);
+      font-size: clamp(22px, 4.2vw, 40px);
       font-weight: 900;
       letter-spacing: .3px;
       color: rgba(255,255,255,.96);
@@ -205,9 +153,7 @@
       opacity:.85;
     }
     @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
-    @media (prefers-reduced-motion: reduce){
-      .flake{ animation:none; opacity:.35; }
-    }
+    @media (prefers-reduced-motion: reduce){ .flake{ animation:none; opacity:.35; } }
   </style>
 </head>
 
@@ -219,28 +165,19 @@
       <div class="orn"></div>
 
       <h1>🎄 Tombola Natalizia • Max 🎄</h1>
-
       <p class="sub">
-        1) Crea una nuova <b>Room</b> • 2) Apri Tabellone o Cartelle • 3) Condividi il codice Room agli altri.
+        Crea una nuova Room e poi apri Tabellone o Cartelle: entrerai direttamente nella room generata.
       </p>
 
-      <div class="roomBox">
-        <div class="roomRow">
-          <div>
-            <div class="roomLabel">ROOM ATTUALE</div>
-            <div class="roomCode" id="roomCode">—</div>
-          </div>
-
-          <div class="miniRow">
-            <button class="miniBtn" id="btnCreate">✨ Crea nuova Room</button>
-            <button class="miniBtn" id="btnCopy" title="Copia codice">📋 Copia</button>
-          </div>
-        </div>
+      <div class="roomLine">
+        <span class="pill">Room: <span id="roomBadge">—</span></span>
       </div>
 
       <div class="ctaRow">
-        <a class="btn gold disabled" id="goTabellone" href="#">Apri Tabellone (Conduttore)</a>
-        <a class="btn gold disabled" id="goCartelle" href="#">Apri Cartelle (Giocatori)</a>
+        <button class="btn red" id="newRoom">➕ Crea nuova Room</button>
+        <a class="btn gold" id="goTab" href="./tabellone.html">Apri Tabellone (Conduttore)</a>
+        <a class="btn gold" id="goCards" href="./cartelle.html">Apri Cartelle (Giocatori)</a>
+        <button class="btn gold" id="purge">🧹 Elimina Room precedenti</button>
       </div>
     </div>
 
@@ -270,64 +207,40 @@
       });
     }
 
-    const elRoom = document.getElementById("roomCode");
-    const btnCreate = document.getElementById("btnCreate");
-    const btnCopy = document.getElementById("btnCopy");
-    const aTab = document.getElementById("goTabellone");
-    const aCar = document.getElementById("goCartelle");
-
     function setRoom(roomId){
-      const r = (roomId || "").trim().toUpperCase();
-      if(!r){
-        elRoom.textContent = "—";
-        aTab.classList.add("disabled");
-        aCar.classList.add("disabled");
-        aTab.href = "#";
-        aCar.href = "#";
-        return;
-      }
-      localStorage.setItem("tombola_roomId", r);
-      elRoom.textContent = r;
-
-      aTab.classList.remove("disabled");
-      aCar.classList.remove("disabled");
-      aTab.href = "./tabellone.html?room=" + encodeURIComponent(r);
-      aCar.href = "./cartelle.html?room=" + encodeURIComponent(r);
+      localStorage.setItem("tombola_roomId", roomId);
+      document.getElementById("roomBadge").textContent = roomId || "—";
+      document.getElementById("goTab").href = "./tabellone.html?room=" + encodeURIComponent(roomId);
+      document.getElementById("goCards").href = "./cartelle.html?room=" + encodeURIComponent(roomId);
     }
 
-    // ripristina room salvata se esiste
-    setRoom(localStorage.getItem("tombola_roomId") || "");
+    const roomLS = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
+    if(roomLS) setRoom(roomLS);
 
-    btnCreate.addEventListener("click", async ()=>{
-      btnCreate.disabled = true;
-      btnCreate.textContent = "⏳ Creo…";
-      try{
-        const res = await jsonp("createRoom", {});
-        if(res && res.ok && res.roomId){
-          setRoom(res.roomId);
-        }else{
-          alert("Errore nella creazione room.");
-        }
-      }catch(e){
-        alert("Errore di rete/timeout nella creazione room.");
-      }finally{
-        btnCreate.disabled = false;
-        btnCreate.textContent = "✨ Crea nuova Room";
+    document.getElementById("newRoom").onclick = async ()=>{
+      const res = await jsonp("createRoom");
+      if(res && res.ok){
+        setRoom(res.roomId);
+        alert("Room creata: " + res.roomId);
+      }else{
+        alert("Errore creazione room");
       }
-    });
+    };
 
-    btnCopy.addEventListener("click", async ()=>{
-      const r = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
-      if(!r){ alert("Nessuna room da copiare. Crea prima una room."); return; }
-      try{
-        await navigator.clipboard.writeText(r);
-        btnCopy.textContent = "✅ Copiato";
-        setTimeout(()=> btnCopy.textContent = "📋 Copia", 900);
-      }catch(e){
-        // fallback
-        prompt("Copia il codice:", r);
+    document.getElementById("purge").onclick = async ()=>{
+      const keep = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
+      if(!keep){
+        alert("Nessuna room corrente in memoria. Crea una room prima.");
+        return;
       }
-    });
+      if(!confirm("Elimino TUTTE le altre room dal Google Sheet, mantenendo solo " + keep + ". Confermi?")) return;
+      const res = await jsonp("purgeOtherRooms", { keepRoomId: keep });
+      if(res && res.ok){
+        alert("Fatto ✅ (tenuta solo: " + keep + ")");
+      }else{
+        alert("Errore purge");
+      }
+    };
 
     // Snow
     const snow = document.getElementById('snow');
