@@ -1,0 +1,715 @@
+/** Tombola Natalizia - Backend su Google Sheets (Apps Script Web App)
+ *  - Room (partita)
+ *  - Players (utente + nome)
+ *  - Cards (cartelle salvate)
+ *  - Draws (estrazioni)
+ *  - Marks (marcature valide)
+ *  - Prizes + Events (premi verificati + feed per tabellone)
+ *
+ *  JSONP:
+ *  - Lato client usi ?callback=... per evitare CORS
+ *
+ *  NOTE IMPORTANTI (aggiornamenti fatti qui):
+ *  ✅ payload PRIZE include SEMPRE: winNumbers, marked, drawIndex, triggerN
+ *     - drawIndex = max drawIndex tra i winNumbers (momento in cui la combinazione diventa possibile)
+ *     - triggerN  = numero con drawIndex massimo (se più, preferisce l'ultimo numero marcato se coerente)
+ *  ✅ state() ritorna TUTTI gli eventi PRIZE della room (non tagliati), così la UI può filtrare "prima vincita"
+ *  ✅ undoDraw() ora ripulisce MARKS del numero annullato e RICALCOLA PRIZES/EVENTS da zero per la room
+ */
+
+const CFG = {
+  SHEETS: {
+    ROOMS:  "Rooms",
+    PLAYERS:"Players",
+    CARDS:  "Cards",
+    DRAWS:  "Draws",
+    MARKS:  "Marks",
+    PRIZES: "Prizes",
+    EVENTS: "Events",
+  },
+  TABELLONE: {
+    playerId: "TABELLONE",
+    name: "TABELLONE",
+    cardCount: 6
+  }
+};
+
+// -------------------- Entry points --------------------
+function doGet(e){  return route_(e); }
+function doPost(e){ return route_(e); }
+
+// -------------------- Router --------------------
+function route_(e){
+  const p = (e && e.parameter) ? e.parameter : {};
+  const action = (p.action || "").trim();
+
+  try{
+    switch(action){
+      case "init":            return respond_({ok:true, init: init_()}, p.callback);
+      case "createRoom":      return respond_(createRoom_(), p.callback);
+      case "join":            return respond_(join_(p), p.callback);
+      case "registerCards":   return respond_(registerCards_(p), p.callback);
+      case "draw":            return respond_(draw_(p), p.callback);
+      case "mark":            return respond_(mark_(p), p.callback);
+      case "state":           return respond_(getState_(p), p.callback);
+      case "undoDraw":        return respond_(undoDraw_(p), p.callback);
+      case "resetGame":       return respond_(resetGame_(p), p.callback);
+      case "purgeOtherRooms": return respond_(purgeOtherRooms_(p), p.callback);
+      default:
+        return respond_({
+          ok:false,
+          error:"Unknown action",
+          hint:"Use ?action=init | createRoom | join | registerCards | draw | mark | state | undoDraw | resetGame | purgeOtherRooms"
+        }, p.callback);
+    }
+  }catch(err){
+    return respond_({ok:false, error:String(err), stack:(err && err.stack)||""}, p.callback);
+  }
+}
+
+// -------------------- Helpers: response / sheets --------------------
+function respond_(obj, callback){
+  const json = JSON.stringify(obj);
+  if (callback && callback.trim()){
+    return ContentService
+      .createTextOutput(`${callback}(${json});`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService
+    .createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function ss_(){ return SpreadsheetApp.getActiveSpreadsheet(); }
+
+function getOrCreateSheet_(name, headers){
+  const ss = ss_();
+  let sh = ss.getSheetByName(name);
+  if(!sh){
+    sh = ss.insertSheet(name);
+  }
+  if(headers && headers.length){
+    const firstRow = sh.getRange(1,1,1,Math.max(headers.length,1)).getValues()[0];
+    const empty = firstRow.every(v => v === "" || v === null);
+    if(empty){
+      sh.getRange(1,1,1,headers.length).setValues([headers]);
+      sh.setFrozenRows(1);
+    }
+  }
+  return sh;
+}
+
+function init_(){
+  getOrCreateSheet_(CFG.SHEETS.ROOMS,   ["roomId","createdAt","status"]);
+  getOrCreateSheet_(CFG.SHEETS.PLAYERS, ["roomId","playerId","name","createdAt","lastSeenAt"]);
+  getOrCreateSheet_(CFG.SHEETS.CARDS,   ["roomId","playerId","cardIndex","gridJson","numbersCsv","createdAt"]);
+  getOrCreateSheet_(CFG.SHEETS.DRAWS,   ["roomId","n","drawIndex","createdAt"]);
+  getOrCreateSheet_(CFG.SHEETS.MARKS,   ["roomId","playerId","cardIndex","n","marked","createdAt"]);
+  getOrCreateSheet_(CFG.SHEETS.PRIZES,  ["roomId","playerId","cardIndex","prize","createdAt"]);
+  getOrCreateSheet_(CFG.SHEETS.EVENTS,  ["roomId","createdAt","type","playerId","name","cardIndex","prize","payloadJson"]);
+  return {sheets:Object.values(CFG.SHEETS)};
+}
+
+function lock_(fn){
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try { return fn(); }
+  finally { lock.releaseLock(); }
+}
+
+function nowISO_(){ return new Date().toISOString(); }
+
+function randRoomId_(){
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
+  return out;
+}
+
+function findRow_(sh, predicateFn){
+  const data = sh.getDataRange().getValues();
+  for(let r=1;r<data.length;r++){
+    if(predicateFn(data[r], r+1)) return {rowIndex:r+1, row:data[r], all:data};
+  }
+  return null;
+}
+
+function safeJson_(s){
+  try{ return JSON.parse(s); }catch(e){ return {}; }
+}
+
+function existsPrize_(roomId, playerId, cardIndex, prize){
+  const sh = getOrCreateSheet_(CFG.SHEETS.PRIZES);
+  const data = sh.getDataRange().getValues();
+  for(let r=1;r<data.length;r++){
+    const [rid,pid,cidx,pr] = data[r];
+    if(String(rid)===roomId && String(pid)===playerId && Number(cidx)===Number(cardIndex) && String(pr)===prize){
+      return true;
+    }
+  }
+  return false;
+}
+
+function clearRoomRows_(sheetName, roomId){
+  const sh = getOrCreateSheet_(sheetName);
+  const data = sh.getDataRange().getValues();
+  for(let r=data.length; r>=2; r--){
+    if(String(data[r-1][0]||"") === roomId){
+      sh.deleteRow(r);
+    }
+  }
+}
+
+function deleteMarksByNumber_(roomId, n){
+  const shM = getOrCreateSheet_(CFG.SHEETS.MARKS);
+  const data = shM.getDataRange().getValues();
+  for(let r=data.length; r>=2; r--){
+    const rid = String(data[r-1][0]||"");
+    const nn  = Number(data[r-1][3]);
+    if(rid === roomId && nn === Number(n)){
+      shM.deleteRow(r);
+    }
+  }
+}
+
+function getDraws_(roomId){
+  const shD = getOrCreateSheet_(CFG.SHEETS.DRAWS);
+  return shD.getDataRange().getValues().slice(1)
+    .filter(r => String(r[0])===roomId)
+    .map(r => ({roomId:String(r[0]), n:Number(r[1]), drawIndex:Number(r[2]), at:String(r[3])}))
+    .sort((a,b)=>a.drawIndex-b.drawIndex);
+}
+
+function getDrawnSet_(roomId){
+  const draws = getDraws_(roomId);
+  return new Set(draws.map(d=>d.n));
+}
+
+function getDrawIndexMap_(roomId){
+  const draws = getDraws_(roomId);
+  const map = new Map();
+  draws.forEach(d => map.set(Number(d.n), Number(d.drawIndex)));
+  return map; // n -> drawIndex
+}
+
+function getCurrentDrawIndex_(roomId){
+  const draws = getDraws_(roomId);
+  return draws.length ? Number(draws[draws.length-1].drawIndex) : 0;
+}
+
+// -------------------- Core actions --------------------
+function createRoom_(){
+  return lock_(()=>{
+    init_();
+    const sh = getOrCreateSheet_(CFG.SHEETS.ROOMS);
+    let roomId = randRoomId_();
+
+    const data = sh.getDataRange().getValues();
+    const existing = new Set(data.slice(1).map(r => String(r[0])));
+    while(existing.has(roomId)) roomId = randRoomId_();
+
+    sh.appendRow([roomId, nowISO_(), "open"]);
+    return {ok:true, roomId};
+  });
+}
+
+function join_(p){
+  const roomId = String(p.roomId || "").trim().toUpperCase();
+  let name = String(p.name || "").trim();
+  if(!roomId) throw new Error("Missing roomId");
+
+  return lock_(()=>{
+    init_();
+
+    const rooms = getOrCreateSheet_(CFG.SHEETS.ROOMS);
+    const room = findRow_(rooms, (row)=> String(row[0])===roomId);
+    if(!room) return {ok:false, error:"Room not found", roomId};
+
+    let playerId = String(p.playerId || "").trim().toUpperCase();
+    if(!playerId){
+      playerId = Utilities.getUuid().slice(0,8).toUpperCase();
+    }
+
+    if(!name){
+      name = "Giocatore-" + playerId;
+    }
+
+    const shP = getOrCreateSheet_(CFG.SHEETS.PLAYERS);
+    const found = findRow_(shP, (row)=> String(row[0])===roomId && String(row[1])===playerId);
+
+    if(found){
+      shP.getRange(found.rowIndex, 3).setValue(name);
+      shP.getRange(found.rowIndex, 5).setValue(nowISO_());
+    }else{
+      shP.appendRow([roomId, playerId, name, nowISO_(), nowISO_()]);
+    }
+
+    return {ok:true, roomId, playerId, name};
+  });
+}
+
+function registerCards_(p){
+  const roomId = String(p.roomId || "").trim().toUpperCase();
+  const playerId = String(p.playerId || "").trim().toUpperCase();
+  const cardsJson = String(p.cardsJson || "").trim();
+
+  if(!roomId) throw new Error("Missing roomId");
+  if(!playerId) throw new Error("Missing playerId");
+  if(!cardsJson) throw new Error("Missing cardsJson");
+
+  let cards;
+  try{ cards = JSON.parse(cardsJson); }catch(e){ throw new Error("cardsJson is not valid JSON"); }
+  if(!Array.isArray(cards) || cards.length<1) throw new Error("cardsJson must be a non-empty array");
+
+  return lock_(()=>{
+    init_();
+    const shC = getOrCreateSheet_(CFG.SHEETS.CARDS);
+
+    // elimina vecchie cartelle di quel player (rigenera)
+    const data = shC.getDataRange().getValues();
+    for(let r=data.length; r>=2; r--){
+      const row = data[r-1];
+      if(String(row[0])===roomId && String(row[1])===playerId){
+        shC.deleteRow(r);
+      }
+    }
+
+    // salva nuove
+    cards.forEach((c)=>{
+      const cardIndex = Number(c.cardIndex);
+      const grid = c.grid;
+      if(!Number.isFinite(cardIndex)) throw new Error("cardIndex invalid");
+
+      const numbers = [];
+      for(const row of grid){
+        for(const v of row){
+          if(v !== null && v !== "" && v !== undefined){
+            numbers.push(Number(v));
+          }
+        }
+      }
+      const numbersCsv = numbers.filter(n=>Number.isFinite(n)).join(",");
+      shC.appendRow([roomId, playerId, cardIndex, JSON.stringify(grid), numbersCsv, nowISO_()]);
+    });
+
+    return {ok:true, saved: cards.length};
+  });
+}
+
+function draw_(p){
+  const roomId = String(p.roomId || "").trim().toUpperCase();
+  const n = Number(p.n);
+
+  if(!roomId) throw new Error("Missing roomId");
+  if(!Number.isFinite(n) || n<1 || n>90) throw new Error("Invalid n (1..90)");
+
+  return lock_(()=>{
+    init_();
+
+    const shD = getOrCreateSheet_(CFG.SHEETS.DRAWS);
+    const data = shD.getDataRange().getValues();
+
+    let maxIdx = 0;
+    for(let r=1;r<data.length;r++){
+      const [rid, nn, drawIndex] = data[r];
+      if(String(rid)===roomId){
+        if(Number(nn)===n) return {ok:false, error:"Number already drawn", roomId, n};
+        maxIdx = Math.max(maxIdx, Number(drawIndex)||0);
+      }
+    }
+
+    const drawIndex = maxIdx + 1;
+    const ts = nowISO_();
+    shD.appendRow([roomId, n, drawIndex, ts]);
+
+    // TABELLONE: auto-player + auto-cards + auto-mark + auto-prizes
+    const tab = autoTabelloneOnDraw_(roomId, n);
+
+    return {ok:true, roomId, n, drawIndex, tabellone: tab};
+  });
+}
+
+function mark_(p){
+  const roomId = String(p.roomId || "").trim().toUpperCase();
+  const playerId = String(p.playerId || "").trim().toUpperCase();
+  const cardIndex = Number(p.cardIndex);
+  const n = Number(p.n);
+  const marked = String(p.marked||"1") === "1";
+
+  if(!roomId) throw new Error("Missing roomId");
+  if(!playerId) throw new Error("Missing playerId");
+  if(!Number.isFinite(cardIndex)) throw new Error("Invalid cardIndex");
+  if(!Number.isFinite(n) || n<1 || n>90) throw new Error("Invalid n (1..90)");
+
+  return lock_(()=>{
+    init_();
+
+    // 1) numero deve essere estratto
+    const drawnSet = getDrawnSet_(roomId);
+    if(!drawnSet.has(n)){
+      return {ok:false, error:"Number not drawn yet", roomId, n};
+    }
+
+    // 2) numero deve essere nella cartella registrata
+    const card = getCard_(roomId, playerId, cardIndex);
+    if(!card) return {ok:false, error:"Card not registered", roomId, playerId, cardIndex};
+
+    if(!card.numbersSet.has(n)){
+      return {ok:false, error:"Number not in card", roomId, n, cardIndex};
+    }
+
+    // 3) salva toggle
+    const shM = getOrCreateSheet_(CFG.SHEETS.MARKS);
+    shM.appendRow([roomId, playerId, cardIndex, n, marked ? 1 : 0, nowISO_()]);
+
+    // 4) nome player (crea/aggiorna)
+    const player = getOrCreatePlayer_(roomId, playerId, null);
+    const name = player.name;
+
+    // 5) calcola premi (con winNumbers + drawIndex + triggerN)
+    const { newly } = computeAndRecordPrizes_(roomId, playerId, name, cardIndex, card.grid, n);
+
+    return {ok:true, roomId, playerId, name, cardIndex, n, marked, newly};
+  });
+}
+
+function getState_(p){
+  const roomId = String(p.roomId || "").trim().toUpperCase();
+  if(!roomId) throw new Error("Missing roomId");
+
+  init_();
+
+  const draws = getDraws_(roomId);
+  const last = draws.length ? draws[draws.length-1].n : null;
+
+  // ✅ ritorna TUTTI gli eventi PRIZE della room (non tagliati)
+  const shE = getOrCreateSheet_(CFG.SHEETS.EVENTS);
+  const events = shE.getDataRange().getValues().slice(1)
+    .filter(r => String(r[0])===roomId && String(r[2])==="PRIZE")
+    .map(r => ({
+      at:String(r[1]), type:String(r[2]),
+      playerId:String(r[3]||""), name:String(r[4]||""),
+      cardIndex:Number(r[5]||0), prize:String(r[6]||""),
+      payload: safeJson_(String(r[7]||"{}"))
+    }))
+    .sort((a,b)=> (a.at<b.at ? -1 : 1));
+
+  return {
+    ok:true,
+    roomId,
+    draws,
+    drawnNumbers: draws.map(d=>d.n),
+    last,
+    events
+  };
+}
+
+function undoDraw_(p){
+  const roomId = String(p.roomId || "").trim().toUpperCase();
+  if(!roomId) throw new Error("Missing roomId");
+
+  return lock_(()=>{
+    init_();
+
+    const shD = getOrCreateSheet_(CFG.SHEETS.DRAWS);
+    const data = shD.getDataRange().getValues();
+    let best = null; // {rowIndex, drawIndex, n}
+
+    for(let r=2; r<=data.length; r++){
+      const row = data[r-1];
+      if(String(row[0]) !== roomId) continue;
+      const idx = Number(row[2]) || 0;
+      if(!best || idx > best.drawIndex){
+        best = {rowIndex:r, drawIndex:idx, n:Number(row[1])};
+      }
+    }
+
+    if(!best) return {ok:false, error:"Nothing to undo", roomId};
+
+    // 1) elimina ultima estrazione
+    shD.deleteRow(best.rowIndex);
+
+    // 2) elimina tutte le marks di quel numero (ora non è più estratto)
+    deleteMarksByNumber_(roomId, best.n);
+
+    // 3) ricalcola PRIZES + EVENTS da zero per coerenza
+    clearRoomRows_(CFG.SHEETS.PRIZES, roomId);
+    clearRoomRows_(CFG.SHEETS.EVENTS, roomId);
+    recomputeAllPrizesForRoom_(roomId);
+
+    return {ok:true, roomId, undone:true, undoneN: best.n, undoneDrawIndex: best.drawIndex};
+  });
+}
+
+function resetGame_(p){
+  const roomId = String(p.roomId || "").trim().toUpperCase();
+  if(!roomId) throw new Error("Missing roomId");
+
+  return lock_(()=>{
+    init_();
+    const targets = [CFG.SHEETS.DRAWS, CFG.SHEETS.MARKS, CFG.SHEETS.PRIZES, CFG.SHEETS.EVENTS];
+    targets.forEach(name=> clearRoomRows_(name, roomId));
+    return {ok:true, roomId, cleared:targets};
+  });
+}
+
+// -------------------- OPTIONAL: purge other rooms (index button) --------------------
+function purgeOtherRooms_(p){
+  const keepRoomId = String(p.keepRoomId || "").trim().toUpperCase();
+  if(!keepRoomId) throw new Error("Missing keepRoomId");
+
+  return lock_(()=>{
+    init_();
+    const allSheets = Object.values(CFG.SHEETS);
+    const cleared = [];
+
+    allSheets.forEach(name=>{
+      const sh = getOrCreateSheet_(name);
+      const data = sh.getDataRange().getValues();
+      for(let r=data.length; r>=2; r--){
+        const rid = String(data[r-1][0] || "");
+        if(rid && rid !== keepRoomId){
+          sh.deleteRow(r);
+        }
+      }
+      cleared.push(name);
+    });
+
+    return {ok:true, keepRoomId, clearedSheets: cleared};
+  });
+}
+
+// -------------------- TABELLONE logic --------------------
+function autoTabelloneOnDraw_(roomId, n){
+  const playerId = CFG.TABELLONE.playerId;
+  const name = CFG.TABELLONE.name;
+
+  // ensure player + cards
+  const p = getOrCreatePlayer_(roomId, playerId, name);
+  ensureTabelloneCards_(roomId);
+
+  // quale cartella contiene n?
+  const cardIndex = tabelloneCardIndexForNumber_(n);
+  const card = getCard_(roomId, playerId, cardIndex);
+  if(!card) return {ok:false, error:"TABELLONE cards missing"};
+
+  if(!card.numbersSet.has(n)){
+    return {ok:true, marked:false, cardIndex};
+  }
+
+  // se già marcato, non duplicare
+  const markedSet = getMarkedSet_(roomId, playerId, cardIndex);
+  if(markedSet.has(n)){
+    return {ok:true, marked:false, cardIndex};
+  }
+
+  // registra mark automatico
+  const shM = getOrCreateSheet_(CFG.SHEETS.MARKS);
+  shM.appendRow([roomId, playerId, cardIndex, n, 1, nowISO_()]);
+
+  // calcola premi e registra events (con winNumbers + drawIndex + triggerN)
+  const { newly } = computeAndRecordPrizes_(roomId, playerId, p.name, cardIndex, card.grid, n);
+
+  return {ok:true, marked:true, cardIndex, newly};
+}
+
+function getOrCreatePlayer_(roomId, playerId, nameOrNull){
+  const shP = getOrCreateSheet_(CFG.SHEETS.PLAYERS);
+  const found = findRow_(shP, (row)=> String(row[0])===roomId && String(row[1])===playerId);
+
+  let name = String(nameOrNull || "").trim();
+  if(!name){
+    name = found ? String(found.row[2] || ("Giocatore-"+playerId)) : ("Giocatore-"+playerId);
+  }
+
+  if(found){
+    shP.getRange(found.rowIndex, 3).setValue(name);
+    shP.getRange(found.rowIndex, 5).setValue(nowISO_());
+  }else{
+    shP.appendRow([roomId, playerId, name, nowISO_(), nowISO_()]);
+  }
+
+  return {roomId, playerId, name};
+}
+
+function ensureTabelloneCards_(roomId){
+  const shC = getOrCreateSheet_(CFG.SHEETS.CARDS);
+  const playerId = CFG.TABELLONE.playerId;
+
+  const data = shC.getDataRange().getValues();
+  const hasAny = data.slice(1).some(r => String(r[0])===roomId && String(r[1])===playerId);
+  if(hasAny) return;
+
+  const cards = buildTabelloneCards_(); // 6 grids
+  cards.forEach((grid, idx)=>{
+    const nums = [];
+    for(const row of grid){
+      for(const v of row){
+        if(v !== null && v !== "" && v !== undefined) nums.push(Number(v));
+      }
+    }
+    const numbersCsv = nums.filter(n=>Number.isFinite(n)).join(",");
+    shC.appendRow([roomId, playerId, idx, JSON.stringify(grid), numbersCsv, nowISO_()]);
+  });
+}
+
+// 6 cartelle fisse: (1..30), (31..60), (61..90) con split 1-5 vs 6-10 su ogni decina
+function buildTabelloneCards_(){
+  const out = [];
+  out.push(makeTabGrid_([1,2,3,4,5],   [11,12,13,14,15], [21,22,23,24,25]));
+  out.push(makeTabGrid_([6,7,8,9,10],  [16,17,18,19,20], [26,27,28,29,30]));
+  out.push(makeTabGrid_([31,32,33,34,35],[41,42,43,44,45],[51,52,53,54,55]));
+  out.push(makeTabGrid_([36,37,38,39,40],[46,47,48,49,50],[56,57,58,59,60]));
+  out.push(makeTabGrid_([61,62,63,64,65],[71,72,73,74,75],[81,82,83,84,85]));
+  out.push(makeTabGrid_([66,67,68,69,70],[76,77,78,79,80],[86,87,88,89,90]));
+  return out;
+}
+
+// grid 3x9 con 5 numeri a sinistra
+function makeTabGrid_(r1, r2, r3){
+  function row(nums){
+    const a = Array(9).fill(null);
+    for(let i=0;i<nums.length;i++) a[i] = nums[i];
+    return a;
+  }
+  return [row(r1), row(r2), row(r3)];
+}
+
+function tabelloneCardIndexForNumber_(n){
+  const tens = Math.floor((n-1)/10);        // 0..8
+  const within = ((n-1)%10) + 1;            // 1..10
+  const group = Math.floor(tens/3);         // 0 (0-2), 1 (3-5), 2 (6-8)
+  const base = group * 2;                   // 0,2,4
+  return base + (within <= 5 ? 0 : 1);      // 0..5
+}
+
+// -------------------- Card + marks + prizes --------------------
+function getCard_(roomId, playerId, cardIndex){
+  const shC = getOrCreateSheet_(CFG.SHEETS.CARDS);
+  const row = findRow_(shC, (r)=> String(r[0])===roomId && String(r[1])===playerId && Number(r[2])===Number(cardIndex));
+  if(!row) return null;
+
+  const grid = JSON.parse(row.row[3]);
+  const numbersCsv = String(row.row[4]||"");
+  const numbersSet = new Set(numbersCsv.split(",").filter(Boolean).map(x=>Number(x)));
+
+  return { grid, numbersSet };
+}
+
+function getMarkedSet_(roomId, playerId, cardIndex){
+  const shM = getOrCreateSheet_(CFG.SHEETS.MARKS);
+  const marksData = shM.getDataRange().getValues().slice(1)
+    .filter(r => String(r[0])===roomId && String(r[1])===playerId && Number(r[2])===Number(cardIndex));
+
+  const lastToggle = new Map();
+  marksData.forEach(r=>{
+    const nn = Number(r[3]);
+    const mk = Number(r[4])===1;
+    lastToggle.set(nn, mk);
+  });
+
+  return new Set([...lastToggle.entries()].filter(([,mk])=>mk).map(([nn])=>nn));
+}
+
+/**
+ * Calcola premi per una specifica cartella (playerId/cardIndex), e registra in PRIZES+EVENTS.
+ * triggerN = ultimo numero marcato (utile per scegliere triggerN in payload in caso di parità)
+ */
+function computeAndRecordPrizes_(roomId, playerId, name, cardIndex, grid, triggerN){
+  const markedSet = getMarkedSet_(roomId, playerId, cardIndex);
+  const drawIndexMap = getDrawIndexMap_(roomId);
+
+  const rowPrizes = [
+    {k:2, prize:"AMBO"},
+    {k:3, prize:"TERNO"},
+    {k:4, prize:"QUATERNA"},
+    {k:5, prize:"CINQUINA"},
+  ];
+
+  const newly = [];
+
+  for(let r=0;r<3;r++){
+    const rowNums = grid[r].filter(v=>v!==null && v!=="" && v!==undefined).map(Number);
+    const hitNums = rowNums.filter(nn=>markedSet.has(nn));
+
+    rowPrizes.forEach(({k,prize})=>{
+      if(hitNums.length >= k){
+        if(!existsPrize_(roomId, playerId, cardIndex, prize)){
+          // drawIndex = max drawIndex tra i numeri vincenti della riga
+          const di = hitNums.reduce((mx, nn)=> Math.max(mx, Number(drawIndexMap.get(nn)||0)), 0);
+          const candidates = hitNums.filter(nn => Number(drawIndexMap.get(nn)||0) === di);
+          const trig = candidates.includes(Number(triggerN)) ? Number(triggerN) : (candidates[0] || Number(triggerN) || null);
+
+          const payload = {
+            row: r+1,
+            hit: hitNums.length,
+            marked: [...markedSet],
+            winNumbers: hitNums.slice().sort((a,b)=>a-b),
+            drawIndex: di,
+            triggerN: trig
+          };
+          recordPrize_(roomId, playerId, name, cardIndex, prize, payload);
+          newly.push({prize, winNumbers: payload.winNumbers, drawIndex: di, triggerN: trig});
+        }
+      }
+    });
+  }
+
+  // Tombola: 15 numeri marcati
+  if(markedSet.size >= 15){
+    const prize = "TOMBOLA";
+    if(!existsPrize_(roomId, playerId, cardIndex, prize)){
+      const wn = [...markedSet].sort((a,b)=>a-b);
+      const di = wn.reduce((mx, nn)=> Math.max(mx, Number(drawIndexMap.get(nn)||0)), 0);
+      const candidates = wn.filter(nn => Number(drawIndexMap.get(nn)||0) === di);
+      const trig = candidates.includes(Number(triggerN)) ? Number(triggerN) : (candidates[0] || Number(triggerN) || null);
+
+      const payload = {
+        hit: markedSet.size,
+        marked: [...markedSet],
+        winNumbers: wn,
+        drawIndex: di,
+        triggerN: trig
+      };
+      recordPrize_(roomId, playerId, name, cardIndex, prize, payload);
+      newly.push({prize, winNumbers: payload.winNumbers, drawIndex: di, triggerN: trig});
+    }
+  }
+
+  return { newly };
+}
+
+function recordPrize_(roomId, playerId, name, cardIndex, prize, payload){
+  const shPr = getOrCreateSheet_(CFG.SHEETS.PRIZES);
+  const shEv = getOrCreateSheet_(CFG.SHEETS.EVENTS);
+  const ts = nowISO_();
+
+  // safety: forziamo campi chiave presenti (senza compatibilità retro)
+  const p = payload || {};
+  if(!Array.isArray(p.winNumbers)) p.winNumbers = [];
+  if(!Array.isArray(p.marked)) p.marked = [];
+  if(!Number.isFinite(Number(p.drawIndex))) p.drawIndex = 0;
+  if(!Number.isFinite(Number(p.triggerN))) p.triggerN = null;
+
+  shPr.appendRow([roomId, playerId, cardIndex, prize, ts]);
+  shEv.appendRow([roomId, ts, "PRIZE", playerId, name, cardIndex, prize, JSON.stringify(p)]);
+}
+
+// -------------------- Recompute after undo (coerenza totale) --------------------
+function recomputeAllPrizesForRoom_(roomId){
+  // ricrea premi/eventi in base alle MARKS rimaste e alle CARDS presenti
+  const shC = getOrCreateSheet_(CFG.SHEETS.CARDS);
+  const data = shC.getDataRange().getValues().slice(1)
+    .filter(r => String(r[0]) === roomId);
+
+  // per ogni card registrata: ricalcola
+  data.forEach(r=>{
+    const playerId = String(r[1]||"");
+    const cardIndex = Number(r[2]||0);
+    const grid = safeJson_(String(r[3]||"[]"));
+
+    const player = getOrCreatePlayer_(roomId, playerId, (playerId===CFG.TABELLONE.playerId ? CFG.TABELLONE.name : null));
+    // triggerN non noto nel rebuild: usiamo null (la funzione sceglie comunque un trigger coerente)
+    computeAndRecordPrizes_(roomId, playerId, player.name, cardIndex, grid, null);
+  });
+}
