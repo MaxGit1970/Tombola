@@ -1,53 +1,93 @@
-<!-- tabellone.html (MOBILE-FIRST + Google Sheet backend + tabellone a metà + logica premi "prima volta") -->
+<!-- tabellone.html (MOBILE-FIRST + Google Sheet backend + tabellone a metà + log dettagliato + polling seriale) -->
 <!doctype html>
 <html lang="it">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Tabellone – Tombola Natalizia</title>
   <style>
-    :root{
-      --bgA:#ff1e3a;
-      --bgB:#c4001a;
-      --gold:#ffcc2e;
-      --green:#0a8f3f;
+    :root {
+      --bgA: #ff1e3a;
+      --bgB: #c4001a;
+      --gold: #ffcc2e;
+      --green: #0a8f3f;
 
-      --txt:#141414;
-      --card: rgba(255,255,255,.82);
-      --card2: rgba(255,255,255,.72);
-      --stroke: rgba(255,255,255,.75);
-      --shadow: 0 18px 42px rgba(0,0,0,.18);
+      --txt: #141414;
+      --card: rgba(255, 255, 255, .82);
+      --card2: rgba(255, 255, 255, .72);
+      --stroke: rgba(255, 255, 255, .75);
+      --shadow: 0 18px 42px rgba(0, 0, 0, .18);
       --r: 18px;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; min-height:100svh; color:var(--txt);
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      min-height: 100svh;
+      color: var(--txt);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
       background:
-        radial-gradient(1000px 700px at 10% 10%, rgba(255,255,255,.30) 0%, transparent 58%),
-        radial-gradient(800px 600px at 90% 12%, rgba(255,204,46,.35) 0%, transparent 55%),
-        radial-gradient(900px 700px at 70% 90%, rgba(255,255,255,.22) 0%, transparent 62%),
+        radial-gradient(1000px 700px at 10% 10%, rgba(255, 255, 255, .30) 0%, transparent 58%),
+        radial-gradient(800px 600px at 90% 12%, rgba(255, 204, 46, .35) 0%, transparent 55%),
+        radial-gradient(900px 700px at 70% 90%, rgba(255, 255, 255, .22) 0%, transparent 62%),
         linear-gradient(135deg, var(--bgA), var(--bgB));
-      overflow-x:hidden;
+      overflow-x: hidden;
     }
 
-    header{max-width:820px;margin:0 auto;padding:12px 10px}
-    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    .brand{display:flex;gap:10px;align-items:center}
-    .brand b{font-size:17px}
-    .pill{
-      border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.82);
-      padding:7px 10px; border-radius:999px;
-      color: rgba(0,0,0,.70); font-size:13px;
-      text-decoration:none;
-      display:inline-flex; align-items:center; gap:8px;
+    header {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 12px 10px
     }
-    .roomBadge{font-weight:1000; letter-spacing:.3px}
 
-    main{max-width:820px;margin:0 auto;padding:0 10px 56px}
-    .card{
-      border:1px solid var(--stroke);
+    .top {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .brand {
+      display: flex;
+      gap: 10px;
+      align-items: center
+    }
+
+    .brand b {
+      font-size: 17px
+    }
+
+    .pill {
+      border: 1px solid rgba(0, 0, 0, .12);
+      background: rgba(255, 255, 255, .82);
+      padding: 7px 10px;
+      border-radius: 999px;
+      color: rgba(0, 0, 0, .70);
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .roomBadge {
+      font-weight: 1000;
+      letter-spacing: .3px
+    }
+
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 0 10px 56px
+    }
+
+    .card {
+      border: 1px solid var(--stroke);
       background: var(--card);
       border-radius: var(--r);
       box-shadow: var(--shadow);
@@ -55,117 +95,289 @@
       margin-bottom: 10px;
     }
 
-    .big{
-      display:flex; align-items:baseline; justify-content:space-between; gap:12px;
-      padding: 9px 10px; border-radius: 16px;
-      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.72));
-      border:1px solid rgba(0,0,0,.10);
-      margin-bottom:10px;
+    .big {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .72));
+      border: 1px solid rgba(0, 0, 0, .10);
+      margin-bottom: 10px;
     }
-    .last{font-size:56px; font-weight:900; letter-spacing:-1px; line-height:1}
-    .label{color:rgba(0,0,0,.62); font-size:12px}
-    .smorfia{margin-top:4px; font-size:15px}
 
-    .controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-    button{
-      cursor:pointer; border:1px solid rgba(0,0,0,.12);
-      border-radius:14px; padding:11px 12px;
-      font-weight:900; letter-spacing:.2px;
-      background: rgba(255,255,255,.85);
-      color:#111;
-      box-shadow: 0 12px 26px rgba(0,0,0,.15);
+    .last {
+      font-size: 56px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1
+    }
+
+    .label {
+      color: rgba(0, 0, 0, .62);
+      font-size: 12px
+    }
+
+    .smorfia {
+      margin-top: 4px;
+      font-size: 15px
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid rgba(0, 0, 0, .12);
+      border-radius: 14px;
+      padding: 11px 12px;
+      font-weight: 900;
+      letter-spacing: .2px;
+      background: rgba(255, 255, 255, .85);
+      color: #111;
+      box-shadow: 0 12px 26px rgba(0, 0, 0, .15);
       min-height: 44px;
       flex: 1 1 140px;
     }
-    button.primary{ background: linear-gradient(180deg, #ff6b7c, #ff1e3a); }
-    button.gold{ background: linear-gradient(180deg, #ffe17b, #ffcc2e); }
-    button.danger{ background: rgba(0,0,0,.06); }
-    button:disabled{opacity:.55; cursor:not-allowed}
-    .hint{color:rgba(0,0,0,.62); font-size:12px; margin-top:8px; line-height:1.35; text-align:center}
+
+    button.primary {
+      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
+    }
+
+    button.gold {
+      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
+    }
+
+    button.danger {
+      background: rgba(0, 0, 0, .06);
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed
+    }
+
+    .hint {
+      color: rgba(0, 0, 0, .62);
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.35;
+      text-align: center
+    }
 
     /* ✅ TABELLONE A METÀ (celle più piccole, numeri grandi) */
-    .boardWrap{
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
+    .boardWrap {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
     }
-    .boardHalf{
-      flex:1;
-      display:grid;
+
+    .boardHalf {
+      flex: 1;
+      display: grid;
       grid-template-columns: repeat(5, minmax(22px, 1fr));
-      gap:3px;
+      gap: 3px;
     }
-    .cell{
-      aspect-ratio:1/1;
-      display:flex; align-items:center; justify-content:center;
+
+    .cell {
+      aspect-ratio: 1/1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       border-radius: 11px;
-      border:1px solid rgba(0,0,0,.10);
-      background: rgba(255,255,255,.90);
-      font-weight:1000;
-      user-select:none;
+      border: 1px solid rgba(0, 0, 0, .10);
+      background: rgba(255, 255, 255, .90);
+      font-weight: 1000;
+      user-select: none;
       font-size: clamp(16px, 5.1vw, 24px);
-      line-height:1;
-      position:relative;
+      line-height: 1;
+      position: relative;
     }
-    .cell.drawn{
-      background: linear-gradient(180deg, rgba(10,143,63,.30), rgba(10,143,63,.14));
-      border-color: rgba(10,143,63,.55);
-      box-shadow: 0 10px 20px rgba(10,143,63,.14);
+
+    .cell.drawn {
+      background: linear-gradient(180deg, rgba(10, 143, 63, .30), rgba(10, 143, 63, .14));
+      border-color: rgba(10, 143, 63, .55);
+      box-shadow: 0 10px 20px rgba(10, 143, 63, .14);
     }
-    .cell.last::after{
-      content:"✨";
-      position:absolute; top:-8px; right:-8px;
-      font-size:16px;
-      filter: drop-shadow(0 8px 12px rgba(0,0,0,.25));
+
+    .cell.last::after {
+      content: "✨";
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      font-size: 16px;
+      filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .25));
     }
 
     /* ✅ BOX in fondo pagina */
-    .rowBottom{display:grid; gap:10px; grid-template-columns:1fr; margin-top:10px;}
-    .list{
-      display:flex; flex-wrap:wrap; gap:8px;
-      max-height: 190px; overflow:auto; padding-right:6px;
-    }
-    .chip{
-      border:1px solid rgba(0,0,0,.12);
-      background: rgba(255,255,255,.85);
-      padding:6px 10px; border-radius:999px;
-      font-weight:900; color:#111
+    .rowBottom {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+      margin-top: 10px;
     }
 
-    /* ✅ Premi verificati: UNA RIGA SOLA (scroll orizzontale se lunga) */
-    .eventList{display:flex; flex-direction:column; gap:8px; max-height: 260px; overflow:auto;}
-    .eventLine{
-      border:1px solid rgba(0,0,0,.10);
-      background: rgba(255,255,255,.88);
+    .list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-height: 190px;
+      overflow: auto;
+      padding-right: 6px;
+    }
+
+    .chip {
+      border: 1px solid rgba(0, 0, 0, .12);
+      background: rgba(255, 255, 255, .85);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 900;
+      color: #111
+    }
+
+    /* ✅ Premi verificati */
+    .eventList {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .eventLine {
+      border: 1px solid rgba(0, 0, 0, .10);
+      background: rgba(255, 255, 255, .88);
       border-radius: 14px;
       padding: 10px 12px;
-      box-shadow: 0 10px 22px rgba(0,0,0,.08);
-
+      box-shadow: 0 10px 22px rgba(0, 0, 0, .08);
       white-space: nowrap;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       font-weight: 1000;
       font-size: 13px;
     }
-    .eventLine small{
+
+    .eventLine small {
       font-weight: 900;
-      color: rgba(0,0,0,.58);
+      color: rgba(0, 0, 0, .58);
+    }
+
+    /* ✅ Debug panel */
+    .dbg {
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      z-index: 9999;
+      border: 1px solid rgba(0, 0, 0, .15);
+      background: rgba(255, 255, 255, .92);
+      border-radius: 16px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, .22);
+      padding: 10px;
+      display: none;
+    }
+
+    .dbgTop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px
+    }
+
+    .dbgTop b {
+      font-size: 13px
+    }
+
+    .dbgBtns {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap
+    }
+
+    .dbgBtns button {
+      flex: 0 0 auto;
+      padding: 8px 10px;
+      min-height: auto;
+      border-radius: 12px;
+      box-shadow: none;
+      font-weight: 1000;
+    }
+
+    .dbgLog {
+      max-height: 220px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      line-height: 1.25;
+      white-space: pre-wrap;
+      color: #111;
+      border-top: 1px solid rgba(0, 0, 0, .10);
+      padding-top: 8px;
+    }
+
+    .dbgLine {
+      margin: 0 0 6px 0
+    }
+
+    .dbgLine .lvl {
+      font-weight: 1000
+    }
+
+    .dbgLine .warn {
+      color: #a16207
+    }
+
+    .dbgLine .err {
+      color: #b91c1c
     }
 
     /* Snow */
-    .snow{position:fixed; inset:0; pointer-events:none; overflow:hidden}
-    .flake{
-      position:absolute; top:-10px; width:6px; height:6px; border-radius:50%;
-      background: rgba(255,255,255,.95);
-      box-shadow: 0 0 14px rgba(255,255,255,.45);
-      opacity:.85;
+    .snow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden
+    }
+
+    .flake {
+      position: absolute;
+      top: -10px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .95);
+      box-shadow: 0 0 14px rgba(255, 255, 255, .45);
+      opacity: .85;
       animation: fall linear infinite;
     }
-    .flake.gold{ background: rgba(255,204,46,.95); box-shadow: 0 0 14px rgba(255,204,46,.45); opacity:.8; }
-    @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
-    @media (prefers-reduced-motion: reduce){ .flake{ animation:none; opacity:.30; } }
+
+    .flake.gold {
+      background: rgba(255, 204, 46, .95);
+      box-shadow: 0 0 14px rgba(255, 204, 46, .45);
+      opacity: .8;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translate3d(var(--dx), 110svh, 0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .flake {
+        animation: none;
+        opacity: .30;
+      }
+    }
   </style>
 </head>
+
 <body>
   <div class="snow" id="snow"></div>
 
@@ -175,7 +387,7 @@
         <div style="font-size:22px">🎄</div>
         <div>
           <b>Tabellone</b>
-          <div class="pill">Spazio = Estrai • Z = Undo • R = Reset</div>
+          <div class="pill">Spazio = Estrai • Z = Undo • R = Reset • D = Debug</div>
         </div>
       </div>
 
@@ -187,13 +399,13 @@
   </header>
 
   <main>
-    <!-- ✅ SOLO HEADER/CONTROLLI -->
     <section class="card">
       <div class="big">
         <div>
           <div class="label">Ultimo numero</div>
           <div class="last" id="last">—</div>
           <div class="smorfia" id="smorfia">Pronto a iniziare ✨</div>
+          <div class="label" id="net">Connessione: —</div>
         </div>
         <div style="text-align:right">
           <div class="label">Estratti</div>
@@ -212,7 +424,6 @@
       </div>
     </section>
 
-    <!-- ✅ TABELLONE PRIMA -->
     <section class="card">
       <div class="label" style="margin-bottom:8px">Tabellone 1–90</div>
       <div class="boardWrap">
@@ -221,7 +432,6 @@
       </div>
     </section>
 
-    <!-- ✅ BOX IN FONDO -->
     <section class="card" style="background:var(--card2)">
       <div class="rowBottom">
         <div class="card" style="box-shadow:none;background:rgba(255,255,255,.65); margin:0">
@@ -242,39 +452,157 @@
     </section>
   </main>
 
+  <!-- Debug Panel -->
+  <div class="dbg" id="dbg">
+    <div class="dbgTop">
+      <b>Debug</b>
+      <div class="dbgBtns">
+        <button id="dbgCopy">Copia log</button>
+        <button id="dbgClear">Pulisci</button>
+        <button id="dbgClose">Chiudi</button>
+      </div>
+    </div>
+    <div class="dbgLog" id="dbgLog"></div>
+  </div>
+
   <script>
     // ====== CONFIG ======
     const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
 
-    function getRoomId(){
+
+    // debug attivo se ?debug=1
+    const DEBUG = new URL(location.href).searchParams.get("debug") === "1";
+
+    function getRoomId() {
       const url = new URL(location.href);
       const q = (url.searchParams.get("room") || "").trim().toUpperCase();
       const ls = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
       let room = q || ls;
-      if(!room){
+      if (!room) {
         room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
       }
-      if(room) localStorage.setItem("tombola_roomId", room);
+      if (room) localStorage.setItem("tombola_roomId", room);
       return room;
     }
 
-    // JSONP helper
-    function jsonp(action, params={}){
-      return new Promise((resolve, reject)=>{
-        const cb = "cb_" + Math.random().toString(36).slice(2);
-        const qs = new URLSearchParams({ action, ...params, callback: cb }).toString();
-        const s = document.createElement("script");
-        const t = setTimeout(()=>{ cleanup(); reject(new Error("Timeout")); }, 12000);
+    // ====== DEBUG LOGGING ======
+    const dbg = document.getElementById("dbg");
+    const dbgLogEl = document.getElementById("dbgLog");
 
-        function cleanup(){
-          clearTimeout(t);
-          if(window[cb]) delete window[cb];
-          if(s && s.parentNode) s.parentNode.removeChild(s);
+    const logs = [];
+    const MAX_LOGS = 250;
+
+    function ts_() {
+      const d = new Date();
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + "." + String(d.getMilliseconds()).padStart(3, "0");
+    }
+
+    function log_(level, msg, data) {
+      const line = {
+        t: ts_(),
+        level: String(level || "INFO"),
+        msg: String(msg || ""),
+        data: data === undefined ? null : data
+      };
+      logs.push(line);
+      if (logs.length > MAX_LOGS) logs.shift();
+
+      // console
+      if (level === "ERROR") console.error(line.t, level, msg, data || "");
+      else if (level === "WARN") console.warn(line.t, level, msg, data || "");
+      else console.log(line.t, level, msg, data || "");
+
+      if (DEBUG && dbg && dbg.style.display !== "none") {
+        renderDbg_();
+      }
+    }
+
+    function renderDbg_() {
+      if (!dbgLogEl) return;
+      dbgLogEl.innerHTML = logs.map(l => {
+        const lvlCls = l.level === "ERROR" ? "err" : (l.level === "WARN" ? "warn" : "");
+        const d = l.data ? JSON.stringify(l.data) : "";
+        return `<div class="dbgLine"><span class="lvl ${lvlCls}">${l.level}</span> ${l.t} — ${escapeHtml_(l.msg)}${d ? " " + escapeHtml_(d) : ""}</div>`;
+      }).join("");
+      dbgLogEl.scrollTop = dbgLogEl.scrollHeight;
+    }
+
+    function escapeHtml_(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function toggleDbg_() {
+      if (!dbg) return;
+      const on = dbg.style.display === "block";
+      dbg.style.display = on ? "none" : "block";
+      if (!on) renderDbg_();
+    }
+
+    document.getElementById("dbgClose").onclick = () => { dbg.style.display = "none"; };
+    document.getElementById("dbgClear").onclick = () => { logs.length = 0; renderDbg_(); };
+    document.getElementById("dbgCopy").onclick = async () => {
+      const text = logs.map(l => `${l.t}\t${l.level}\t${l.msg}\t${l.data ? JSON.stringify(l.data) : ""}`).join("\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        log_("INFO", "debug copied");
+      } catch (e) {
+        log_("ERROR", "copy failed", { err: String(e) });
+      }
+    };
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key.toLowerCase() === "d") { toggleDbg_(); }
+    });
+
+    // ====== JSONP helper (con log + debug + timeout) ======
+    function jsonp(action, params = {}) {
+      return new Promise((resolve, reject) => {
+        const cb = "cb_" + Math.random().toString(36).slice(2);
+        const nocache = Date.now();
+        const full = { action, ...params, callback: cb, nocache };
+        if (DEBUG) full.debug = "1";
+
+        const qs = new URLSearchParams(full).toString();
+        const url = API_BASE + "?" + qs;
+
+        const s = document.createElement("script");
+        const t0 = performance.now();
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error("Timeout"));
+        }, 15000);
+
+        function cleanup() {
+          clearTimeout(timer);
+          if (window[cb]) delete window[cb];
+          if (s && s.parentNode) s.parentNode.removeChild(s);
         }
 
-        window[cb] = (data)=>{ cleanup(); resolve(data); };
-        s.src = API_BASE + "?" + qs;
-        s.onerror = ()=>{ cleanup(); reject(new Error("Network error")); };
+        window[cb] = (data) => {
+          const ms = Math.round(performance.now() - t0);
+          cleanup();
+          const ok = !!(data && data.ok);
+          const reqId = data && data._debug && data._debug.reqId ? data._debug.reqId : null;
+          log_("INFO", "JSONP <- ok", { action, cb, ms, ok, serverReqId: reqId });
+
+          if (DEBUG && data && data._debug) {
+            log_("INFO", "SERVER _debug", data._debug);
+          }
+          resolve(data);
+        };
+
+        s.onerror = () => {
+          cleanup();
+          reject(new Error("Network error"));
+        };
+
+        log_("INFO", "JSONP -> start", { action, cb, url: url.slice(0, 220) + "..." });
+        s.src = url;
         document.body.appendChild(s);
       });
     }
@@ -283,49 +611,50 @@
     const roomId = getRoomId();
     document.getElementById("roomBadge").textContent = roomId || "—";
 
-    const elLast = document.getElementById('last');
-    const elSm = document.getElementById('smorfia');
-    const elCount = document.getElementById('count');
-    const elHist = document.getElementById('history');
-    const elSorted = document.getElementById('sorted');
-    const elEvents = document.getElementById('events');
+    const elLast = document.getElementById("last");
+    const elSm = document.getElementById("smorfia");
+    const elCount = document.getElementById("count");
+    const elHist = document.getElementById("history");
+    const elSorted = document.getElementById("sorted");
+    const elEvents = document.getElementById("events");
+    const elNet = document.getElementById("net");
 
-    const btnDraw = document.getElementById('draw');
-    const btnUndo = document.getElementById('undo');
-    const btnReset = document.getElementById('reset');
+    const btnDraw = document.getElementById("draw");
+    const btnUndo = document.getElementById("undo");
+    const btnReset = document.getElementById("reset");
 
     const elBoardL = document.getElementById("boardL");
     const elBoardR = document.getElementById("boardR");
 
     const SMORFIA = [
       "",
-      "L'Italia","La bambina","La gatta","Il maiale","La mano","Quella che guarda in terra","Il vaso","La Madonna","La figliolanza",
-      "I fagioli","I topolini","Il soldato","Sant'Antonio","L'ubriaco","Il ragazzo","Il sedere","La disgrazia","Il sangue","La risata",
-      "La festa","La donna nuda","Il pazzo","Lo scemo","Le guardie","Natale","Anna","Il pitale","I seni","Il padre dei bambini",
-      "Le palle del tenente","Il padrone di casa","Il capitone","Gli anni di Cristo","La testa","L'uccellino","Le nacchere","Il monaco","Le botte",
-      "Il cappello","La noia","Il coltello","Il caffè","La donna al balcone","La prigione","Il vino buono","Il denaro","Il morto che parla",
-      "Il morto","Il pane","Il giardino","La mamma","Il vecchio","Il cappotto","La musica","La caduta","Il gobbo","Il pacco",
-      "I peli","Il lamento","Il cacciatore","Il pianto","Il morto ammazzato","La sposa","Le lacrime","La zuppa cotta","Sottosopra",
-      "Il palazzo","L'ommo 'e merda","Il ponte","L'ospedale","La casa","I diavoli","La fontana","La lanterna","La meraviglia",
-      "La puttana","Il ladro","La bocca","I piedi","La tavola imbandita","Il re","Le donne","I fiori","Il maltempo",
-      "La chiesa","Le anime del purgatorio","La bottega","I pidocchi","Il buon cuore","I bambini","La paura","La festa grande","La fortuna"
+      "L'Italia", "La bambina", "La gatta", "Il maiale", "La mano", "Quella che guarda in terra", "Il vaso", "La Madonna", "La figliolanza",
+      "I fagioli", "I topolini", "Il soldato", "Sant'Antonio", "L'ubriaco", "Il ragazzo", "Il sedere", "La disgrazia", "Il sangue", "La risata",
+      "La festa", "La donna nuda", "Il pazzo", "Lo scemo", "Le guardie", "Natale", "Anna", "Il pitale", "I seni", "Il padre dei bambini",
+      "Le palle del tenente", "Il padrone di casa", "Il capitone", "Gli anni di Cristo", "La testa", "L'uccellino", "Le nacchere", "Il monaco", "Le botte",
+      "Il cappello", "La noia", "Il coltello", "Il caffè", "La donna al balcone", "La prigione", "Il vino buono", "Il denaro", "Il morto che parla",
+      "Il morto", "Il pane", "Il giardino", "La mamma", "Il vecchio", "Il cappotto", "La musica", "La caduta", "Il gobbo", "Il pacco",
+      "I peli", "Il lamento", "Il cacciatore", "Il pianto", "Il morto ammazzato", "La sposa", "Le lacrime", "La zuppa cotta", "Sottosopra",
+      "Il palazzo", "L'ommo 'e merda", "Il ponte", "L'ospedale", "La casa", "I diavoli", "La fontana", "La lanterna", "La meraviglia",
+      "La puttana", "Il ladro", "La bocca", "I piedi", "La tavola imbandita", "Il re", "Le donne", "I fiori", "Il maltempo",
+      "La chiesa", "Le anime del purgatorio", "La bottega", "I pidocchi", "Il buon cuore", "I bambini", "La paura", "La festa grande", "La fortuna"
     ];
 
     // crea celle 1..90 in due metà (5+5)
     const cells = [];
-    for(let n=1;n<=90;n++){
-      const col = (n-1)%10;              // 0..9
-      const d = document.createElement('div');
-      d.className = 'cell';
+    for (let n = 1; n <= 90; n++) {
+      const col = (n - 1) % 10;
+      const d = document.createElement("div");
+      d.className = "cell";
       d.textContent = n;
       d.dataset.n = n;
-      if(col < 5) elBoardL.appendChild(d);
+      if (col < 5) elBoardL.appendChild(d);
       else elBoardR.appendChild(d);
       cells[n] = d;
     }
 
-    function beep(){
-      try{
+    function beep() {
+      try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const o = ctx.createOscillator();
         const g = ctx.createGain();
@@ -334,126 +663,140 @@
         o.frequency.value = 880;
         g.gain.value = 0.06;
         o.start();
-        setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
-      }catch(e){}
+        setTimeout(() => { o.stop(); ctx.close(); }, 120);
+      } catch (e) { }
     }
 
-    let lastState = { drawnNumbers: [], last: null, events: [] };
-    let lastSig = "";
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-    function fmtTime_(iso){
-      try{
+    // ====== Busy state (UX) ======
+    let busy = 0;
+    let pollInFlight = false;
+    let lastState = { drawnNumbers: [], last: null, events: [], draws: [] };
+    let suspendPolling = false; // ✅ blocca i poll mentre faccio draw/undo/reset
+
+
+    function setBusy(on, label) {
+      busy += on ? 1 : -1;
+      if (busy < 0) busy = 0;
+      const isBusy = busy > 0;
+
+      btnDraw.disabled = isBusy || (lastState.drawnNumbers || []).length >= 90;
+      btnUndo.disabled = isBusy || (lastState.drawnNumbers || []).length === 0;
+      btnReset.disabled = isBusy;
+
+      if (elNet) {
+        elNet.textContent = isBusy ? `Connessione: ${label || "Caricamento…"} (${busy})` : "Connessione: OK";
+      }
+    }
+
+    function fmtTime_(iso) {
+      try {
         const d = new Date(iso);
-        return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-      }catch(e){ return ""; }
+        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      } catch (e) { return ""; }
     }
 
-    // Se il backend non mette drawIndex negli eventi, lo deduciamo dagli orari draw.createdAt <= event.at
-    function inferDrawIndex_(eventAtIso, draws){
-      if(!eventAtIso || !Array.isArray(draws) || !draws.length) return null;
-      // draws sono già ordinati per drawIndex crescente dal backend
+    function inferDrawIndex_(eventAtIso, draws) {
+      if (!eventAtIso || !Array.isArray(draws) || !draws.length) return null;
       let lo = 0, hi = draws.length - 1, best = null;
-      while(lo <= hi){
+      while (lo <= hi) {
         const mid = (lo + hi) >> 1;
         const d = draws[mid];
         const at = String(d.at || "");
-        if(at && at <= eventAtIso){
+        if (at && at <= eventAtIso) {
           best = d;
           lo = mid + 1;
-        }else{
+        } else {
           hi = mid - 1;
         }
       }
       return best ? Number(best.drawIndex) : null;
     }
 
-    function renderFromState(st){
+    function renderFromState(st) {
       const drawn = st.drawnNumbers || [];
       const last = st.last || null;
 
       // board
-      for(let n=1;n<=90;n++){
-        cells[n].classList.remove('drawn','last');
+      for (let n = 1; n <= 90; n++) {
+        if (cells[n]) cells[n].classList.remove("drawn", "last");
       }
-      drawn.forEach(n=>{
-        if(cells[n]) cells[n].classList.add('drawn');
+      drawn.forEach(n => {
+        if (cells[n]) cells[n].classList.add("drawn");
       });
-      if(last && cells[last]){
-        cells[last].classList.add('last');
+      if (last && cells[last]) {
+        cells[last].classList.add("last");
         elLast.textContent = last;
         elSm.textContent = `💬 Smorfia: ${SMORFIA[last] || "—"}`;
-      }else{
+      } else {
         elLast.textContent = "—";
         elSm.textContent = "Pronto a iniziare ✨";
       }
       elCount.textContent = `${drawn.length} / 90`;
 
-      // ✅ storico: più recente a sinistra => render in reverse
+      // storico (reverse)
       elHist.innerHTML = "";
-      (st.draws || []).slice().reverse().forEach(d=>{
-        const c = document.createElement('div');
-        c.className = 'chip';
+      (st.draws || []).slice().reverse().forEach(d => {
+        const c = document.createElement("div");
+        c.className = "chip";
         c.textContent = d.n;
         elHist.appendChild(c);
       });
 
       // ordinati
       elSorted.innerHTML = "";
-      [...drawn].sort((a,b)=>a-b).forEach(n=>{
-        const c = document.createElement('div');
-        c.className = 'chip';
+      [...drawn].sort((a, b) => a - b).forEach(n => {
+        const c = document.createElement("div");
+        c.className = "chip";
         c.textContent = n;
         elSorted.appendChild(c);
       });
 
-      // ✅ premi verificati: mostra SOLO la prima volta per premio, ma include tutti i vincitori di quella prima estrazione
-      const prizeOrder = ["AMBO","TERNO","QUATERNA","CINQUINA","TOMBOLA"];
-      const events = (st.events || []).filter(x => x.type === "PRIZE" && prizeOrder.includes(String(x.prize||"")));
+      // premi verificati: “prima volta per premio”
+      const prizeOrder = ["AMBO", "TERNO", "QUATERNA", "CINQUINA", "TOMBOLA"];
+      const events = (st.events || []).filter(x => x.type === "PRIZE" && prizeOrder.includes(String(x.prize || "")));
 
-      // arricchisci con drawIndex (payload.drawIndex preferito, altrimenti inferito)
-      const enriched = events.map(e=>{
+      const enriched = events.map(e => {
         const payload = e.payload || {};
         const di = Number(payload.drawIndex);
-        const drawIndex = Number.isFinite(di) ? di : inferDrawIndex_(String(e.at||""), st.draws || []);
-        return {...e, _drawIndex: drawIndex};
+        const drawIndex = Number.isFinite(di) ? di : inferDrawIndex_(String(e.at || ""), st.draws || []);
+        return { ...e, _drawIndex: drawIndex };
       }).filter(e => Number.isFinite(e._drawIndex));
 
-      // calcola "prima estrazione" per ogni premio
       const firstDrawByPrize = new Map();
-      for(const e of enriched){
+      for (const e of enriched) {
         const pr = String(e.prize);
         const di = e._drawIndex;
         const cur = firstDrawByPrize.get(pr);
-        if(cur == null || di < cur) firstDrawByPrize.set(pr, di);
+        if (cur == null || di < cur) firstDrawByPrize.set(pr, di);
       }
 
-      // costruisci righe (una riga per premio)
       elEvents.innerHTML = "";
       const any = prizeOrder.some(pr => firstDrawByPrize.has(pr));
-      if(!any){
+      if (!any) {
         const empty = document.createElement("div");
         empty.style.color = "rgba(0,0,0,.62)";
         empty.style.fontWeight = "900";
         empty.textContent = "Nessun premio ancora.";
         elEvents.appendChild(empty);
-      }else{
-        for(const pr of prizeOrder){
-          if(!firstDrawByPrize.has(pr)) continue;
+      } else {
+        for (const pr of prizeOrder) {
+          if (!firstDrawByPrize.has(pr)) continue;
 
           const di = firstDrawByPrize.get(pr);
           const winners = enriched
             .filter(e => String(e.prize) === pr && e._drawIndex === di)
-            .sort((a,b)=>{
-              const an = String(a.name||a.playerId||"");
-              const bn = String(b.name||b.playerId||"");
-              if(an < bn) return -1;
-              if(an > bn) return 1;
-              return (Number(a.cardIndex)||0) - (Number(b.cardIndex)||0);
+            .sort((a, b) => {
+              const an = String(a.name || a.playerId || "");
+              const bn = String(b.name || b.playerId || "");
+              if (an < bn) return -1;
+              if (an > bn) return 1;
+              return (Number(a.cardIndex) || 0) - (Number(b.cardIndex) || 0);
             });
 
-          // stringa unica: PRIZE — Name — Cartella X — Numeri: ...
           const parts = [pr];
-          for(const w of winners){
+          for (const w of winners) {
             const name = String(w.name || w.playerId || "").trim() || "—";
             const card = Number(w.cardIndex) + 1;
             const win = Array.isArray(w.payload && w.payload.winNumbers) ? w.payload.winNumbers : [];
@@ -463,98 +806,149 @@
 
           const line = document.createElement("div");
           line.className = "eventLine";
-
-          // tempo: prendiamo l'orario del primo evento (solo come info in coda)
           const t = winners.length ? fmtTime_(winners[0].at) : "";
           line.textContent = parts.join(" — ") + (t ? `  •  ${t}` : "");
           elEvents.appendChild(line);
         }
       }
 
-      btnDraw.disabled = drawn.length >= 90;
-      btnUndo.disabled = drawn.length === 0;
+      // bottoni coerenti
+      btnDraw.disabled = busy > 0 || drawn.length >= 90;
+      btnUndo.disabled = busy > 0 || drawn.length === 0;
+      btnReset.disabled = busy > 0;
     }
 
-    async function poll(){
-      if(!roomId) return;
-      try{
+    async function poll() {
+      if (!roomId) return;
+      if (pollInFlight) return;
+      pollInFlight = true;
+
+      setBusy(true, "Sync state");
+      const t0 = performance.now();
+
+      try {
         const st = await jsonp("state", { roomId });
-        if(st && st.ok){
-          const sig = JSON.stringify({last:st.last, evCount:(st.events||[]).length});
-          if(lastSig && sig !== lastSig) beep();
-          lastSig = sig;
+        const ms = Math.round(performance.now() - t0);
+
+        if (st && st.ok) {
+          const oldLast = lastState.last;
+          const oldEv = (lastState.events || []).length;
+          const newLast = st.last;
+          const newEv = (st.events || []).length;
+          if (oldLast !== null && (oldLast !== newLast || oldEv !== newEv)) beep();
 
           lastState = st;
           renderFromState(st);
+          log_("INFO", "poll ok", { ms, last: st.last, draws: (st.draws || []).length, events: (st.events || []).length });
+        } else {
+          log_("WARN", "poll not ok", { ms, st });
         }
-      }catch(e){}
-    }
-
-    async function draw(){
-      if(!roomId) return;
-      const drawnSet = new Set(lastState.drawnNumbers || []);
-      if(drawnSet.size >= 90) return;
-
-      let n;
-      do { n = Math.floor(Math.random()*90)+1; } while(drawnSet.has(n));
-
-      const res = await jsonp("draw", { roomId, n });
-      if(!res.ok){
-        await poll();
-        return;
+      } catch (e) {
+        const ms = Math.round(performance.now() - t0);
+        log_("ERROR", "poll failed", { ms, err: String(e) });
+      } finally {
+        setBusy(false);
+        pollInFlight = false;
       }
-      await poll();
     }
 
-    async function undo(){
-      if(!roomId) return;
-      await jsonp("undoDraw", { roomId });
-      await poll();
+    async function draw() {
+      if (!roomId) return;
+
+      // ✅ sospendi polling durante l’azione
+      suspendPolling = true;
+
+      try {
+        const drawnSet = new Set(lastState.drawnNumbers || []);
+        if (drawnSet.size >= 90) return;
+
+        let n;
+        do { n = Math.floor(Math.random() * 90) + 1; } while (drawnSet.has(n));
+
+        const res = await jsonp("draw", { roomId, n });
+        if (!res.ok) {
+          // se draw fallisce, ricarica lo stato
+          await poll();
+          return;
+        }
+
+        // ✅ refresh immediato dopo draw
+        await poll();
+      } finally {
+        suspendPolling = false;
+      }
     }
 
-    async function resetAll(){
-      if(!roomId) return;
-      if(!confirm("Reset partita? Cancello estrazioni + marcature + premi.")) return;
-      await jsonp("resetGame", { roomId });
-      await poll();
+
+    async function undo() {
+      if (!roomId) return;
+      suspendPolling = true;
+      try {
+        await jsonp("undoDraw", { roomId });
+        await poll();
+      } finally {
+        suspendPolling = false;
+      }
     }
+
+
+    async function resetAll() {
+      if (!roomId) return;
+      if (!confirm("Reset partita? Cancello estrazioni + marcature + premi.")) return;
+
+      suspendPolling = true;
+      try {
+        await jsonp("resetGame", { roomId });
+        await poll();
+      } finally {
+        suspendPolling = false;
+      }
+    }
+
 
     btnDraw.onclick = draw;
     btnUndo.onclick = undo;
     btnReset.onclick = resetAll;
 
-    window.addEventListener('keydown', (e)=>{
-      if(e.key === ' '){ e.preventDefault(); draw(); }
-      if(e.key.toLowerCase() === 'z'){ undo(); }
-      if(e.key.toLowerCase() === 'r'){ resetAll(); }
+    window.addEventListener("keydown", (e) => {
+      if (e.key === " ") { e.preventDefault(); draw(); }
+      if (e.key.toLowerCase() === "z") { undo(); }
+      if (e.key.toLowerCase() === "r") { resetAll(); }
     });
 
-    // Snow
-    const snow = document.getElementById('snow');
+    // ====== Snow ======
+    const snow = document.getElementById("snow");
     const N = 26;
-    for(let i=0;i<N;i++){
-      const f = document.createElement('div');
+    for (let i = 0; i < N; i++) {
+      const f = document.createElement("div");
       const isGold = Math.random() < 0.20;
-      f.className = 'flake' + (isGold ? ' gold' : '');
-      const x = Math.random()*100;
-      const size = 3 + Math.random()*5;
-      const dur = 9 + Math.random()*14;
-      const dx = (Math.random()*2-1) * 140 + "px";
+      f.className = "flake" + (isGold ? " gold" : "");
+      const x = Math.random() * 100;
+      const size = 3 + Math.random() * 5;
+      const dur = 9 + Math.random() * 14;
+      const dx = (Math.random() * 2 - 1) * 140 + "px";
       f.style.left = x + "vw";
       f.style.width = size + "px";
       f.style.height = size + "px";
       f.style.animationDuration = dur + "s";
-      f.style.setProperty('--dx', dx);
-      f.style.opacity = (0.30 + Math.random()*0.55).toFixed(2);
-      f.style.filter = `blur(${(Math.random()*0.6).toFixed(2)}px)`;
-      f.style.animationDelay = (-Math.random()*dur) + "s";
+      f.style.setProperty("--dx", dx);
+      f.style.opacity = (0.30 + Math.random() * 0.55).toFixed(2);
+      f.style.filter = `blur(${(Math.random() * 0.6).toFixed(2)}px)`;
+      f.style.animationDelay = (-Math.random() * dur) + "s";
       snow.appendChild(f);
     }
 
-    (async ()=>{
+    // ====== BOOT + polling seriale ======
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    (async () => {
       await poll();
-      setInterval(poll, 1500);
+      while (true) {
+        if (!suspendPolling) await poll();
+        await sleep(1500);
+      }
     })();
   </script>
 </body>
+
 </html>
