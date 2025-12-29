@@ -669,33 +669,40 @@
         ensureAudio_();
         if (!audioCtx) return;
 
-        const t0 = audioCtx.currentTime;
+        const start = audioCtx.currentTime;
+        const repeats = 3;
+        const gap = 0.12;      // pausa tra beep
+        const dur = 0.10;      // durata singolo beep
+        const peak = 0.22;     // volume (aumenta fino a 0.30 se vuoi)
 
-        // due oscillatori per un beep più “corposo”
-        const o1 = audioCtx.createOscillator();
-        const o2 = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
+        for (let i = 0; i < repeats; i++) {
+          const t0 = start + i * (dur + gap);
 
-        o1.type = "sine";
-        o2.type = "square";
-        o1.frequency.setValueAtTime(880, t0);
-        o2.frequency.setValueAtTime(1320, t0);
+          const o1 = audioCtx.createOscillator();
+          const o2 = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
 
-        // envelope (attacco veloce, decadimento)
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.01);  // <<< più forte
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.20);
+          o1.type = "sine";
+          o2.type = "square";
+          o1.frequency.setValueAtTime(880, t0);
+          o2.frequency.setValueAtTime(1320, t0);
 
-        o1.connect(g);
-        o2.connect(g);
-        g.connect(audioCtx.destination);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(peak, t0 + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-        o1.start(t0);
-        o2.start(t0);
-        o1.stop(t0 + 0.22);
-        o2.stop(t0 + 0.22);
+          o1.connect(g);
+          o2.connect(g);
+          g.connect(audioCtx.destination);
+
+          o1.start(t0);
+          o2.start(t0);
+          o1.stop(t0 + dur + 0.01);
+          o2.stop(t0 + dur + 0.01);
+        }
       } catch (e) { /* niente */ }
     }
+
 
 
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -707,7 +714,10 @@
     let lastState = { drawnNumbers: [], last: null, events: [], draws: [] };
     let lastSig = "";              // ✅ FIX: mancava
     let suspendPolling = false;
-    let lastPrizeCount = null;     // null = non inizializzato
+
+    let prizeBeepArmed = false;   // evita beep al primo render
+    let lastEventsSig = "";       // firma della sezione "Premi verificati"
+
 
 
 
@@ -855,6 +865,25 @@
         }
       }
 
+      // ✅ Beep SOLO dopo che "Premi verificati" è stato aggiornato in pagina
+      const newSig = (elEvents.textContent || "").trim();
+      const hasPrizeLines = elEvents.querySelectorAll(".eventLine").length > 0;
+
+      if (!prizeBeepArmed) {
+        // primo render: memorizzo e non suono
+        prizeBeepArmed = true;
+        lastEventsSig = newSig;
+      } else {
+        const changed = newSig !== lastEventsSig;
+        lastEventsSig = newSig;
+
+        if (hasPrizeLines && changed) {
+          // dopo update DOM + paint
+          requestAnimationFrame(() => setTimeout(() => beep(), 0));
+        }
+      }
+
+
       // bottoni coerenti
       /* btnDraw.disabled = busy > 0 || drawn.length >= 90;
       btnUndo.disabled = busy > 0 || drawn.length === 0;
@@ -869,7 +898,7 @@
       try {
         const st = await jsonp("state", { roomId });
         if (st && st.ok) {
-          const prizeCount = (st.events || []).length;
+          /* const prizeCount = (st.events || []).length;
 
           // inizializza senza suonare
           if (lastPrizeCount === null) {
@@ -878,7 +907,7 @@
             // suona SOLO se il numero di premi AUMENTA (nuovo premio)
             if (prizeCount > lastPrizeCount) beep();
             lastPrizeCount = prizeCount;
-          }
+          } */
 
           lastState = st;
           renderFromState(st);
