@@ -1,7 +1,6 @@
-<!-- tabellone.html (MOBILE-FIRST + Google Sheet backend + tabellone a metà + log dettagliato + polling seriale) -->
+<!-- tabellone.html (MOBILE-FIRST + Google Sheet backend + TABELLONE delta polling append-only) -->
 <!doctype html>
 <html lang="it">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
@@ -21,10 +20,7 @@
       --r: 18px;
     }
 
-    * {
-      box-sizing: border-box
-    }
-
+    * { box-sizing: border-box }
     body {
       margin: 0;
       min-height: 100svh;
@@ -38,29 +34,10 @@
       overflow-x: hidden;
     }
 
-    header {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 12px 10px
-    }
-
-    .top {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between
-    }
-
-    .brand {
-      display: flex;
-      gap: 10px;
-      align-items: center
-    }
-
-    .brand b {
-      font-size: 17px
-    }
+    header { max-width: 820px; margin: 0 auto; padding: 12px 10px }
+    .top { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between }
+    .brand { display: flex; gap: 10px; align-items: center }
+    .brand b { font-size: 17px }
 
     .pill {
       border: 1px solid rgba(0, 0, 0, .12);
@@ -74,17 +51,9 @@
       align-items: center;
       gap: 8px;
     }
+    .roomBadge { font-weight: 1000; letter-spacing: .3px }
 
-    .roomBadge {
-      font-weight: 1000;
-      letter-spacing: .3px
-    }
-
-    main {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 0 10px 56px
-    }
+    main { max-width: 820px; margin: 0 auto; padding: 0 10px 56px }
 
     .card {
       border: 1px solid var(--stroke);
@@ -107,30 +76,11 @@
       margin-bottom: 10px;
     }
 
-    .last {
-      font-size: 56px;
-      font-weight: 900;
-      letter-spacing: -1px;
-      line-height: 1
-    }
+    .last { font-size: 56px; font-weight: 900; letter-spacing: -1px; line-height: 1 }
+    .label { color: rgba(0, 0, 0, .62); font-size: 12px }
+    .smorfia { margin-top: 4px; font-size: 15px }
 
-    .label {
-      color: rgba(0, 0, 0, .62);
-      font-size: 12px
-    }
-
-    .smorfia {
-      margin-top: 4px;
-      font-size: 15px
-    }
-
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center
-    }
-
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center }
     button {
       cursor: pointer;
       border: 1px solid rgba(0, 0, 0, .12);
@@ -144,23 +94,8 @@
       min-height: 44px;
       flex: 1 1 140px;
     }
-
-    button.primary {
-      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
-    }
-
-    button.gold {
-      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
-    }
-
-    button.danger {
-      background: rgba(0, 0, 0, .06);
-    }
-
-    button:disabled {
-      opacity: .55;
-      cursor: not-allowed
-    }
+    button.primary { background: linear-gradient(180deg, #ff6b7c, #ff1e3a); }
+    button:disabled { opacity: .55; cursor: not-allowed }
 
     .hint {
       color: rgba(0, 0, 0, .62);
@@ -170,13 +105,7 @@
       text-align: center
     }
 
-    /* ✅ TABELLONE A METÀ (celle più piccole, numeri grandi) */
-    .boardWrap {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
+    .boardWrap { display: flex; gap: 10px; align-items: flex-start; }
     .boardHalf {
       flex: 1;
       display: grid;
@@ -198,13 +127,11 @@
       line-height: 1;
       position: relative;
     }
-
     .cell.drawn {
       background: linear-gradient(180deg, rgba(10, 143, 63, .30), rgba(10, 143, 63, .14));
       border-color: rgba(10, 143, 63, .55);
       box-shadow: 0 10px 20px rgba(10, 143, 63, .14);
     }
-
     .cell.last::after {
       content: "✨";
       position: absolute;
@@ -214,7 +141,6 @@
       filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .25));
     }
 
-    /* ✅ BOX in fondo pagina */
     .rowBottom {
       display: grid;
       gap: 10px;
@@ -230,7 +156,6 @@
       overflow: auto;
       padding-right: 6px;
     }
-
     .chip {
       border: 1px solid rgba(0, 0, 0, .12);
       background: rgba(255, 255, 255, .85);
@@ -240,7 +165,6 @@
       color: #111
     }
 
-    /* ✅ Premi verificati */
     .eventList {
       display: flex;
       flex-direction: column;
@@ -248,7 +172,6 @@
       max-height: 260px;
       overflow: auto;
     }
-
     .eventLine {
       border: 1px solid rgba(0, 0, 0, .10);
       background: rgba(255, 255, 255, .88);
@@ -262,89 +185,8 @@
       font-size: 13px;
     }
 
-    .eventLine small {
-      font-weight: 900;
-      color: rgba(0, 0, 0, .58);
-    }
-
-    /* ✅ Debug panel */
-    .dbg {
-      position: fixed;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      z-index: 9999;
-      border: 1px solid rgba(0, 0, 0, .15);
-      background: rgba(255, 255, 255, .92);
-      border-radius: 16px;
-      box-shadow: 0 16px 36px rgba(0, 0, 0, .22);
-      padding: 10px;
-      display: none;
-    }
-
-    .dbgTop {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 8px
-    }
-
-    .dbgTop b {
-      font-size: 13px
-    }
-
-    .dbgBtns {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap
-    }
-
-    .dbgBtns button {
-      flex: 0 0 auto;
-      padding: 8px 10px;
-      min-height: auto;
-      border-radius: 12px;
-      box-shadow: none;
-      font-weight: 1000;
-    }
-
-    .dbgLog {
-      max-height: 220px;
-      overflow: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 11px;
-      line-height: 1.25;
-      white-space: pre-wrap;
-      color: #111;
-      border-top: 1px solid rgba(0, 0, 0, .10);
-      padding-top: 8px;
-    }
-
-    .dbgLine {
-      margin: 0 0 6px 0
-    }
-
-    .dbgLine .lvl {
-      font-weight: 1000
-    }
-
-    .dbgLine .warn {
-      color: #a16207
-    }
-
-    .dbgLine .err {
-      color: #b91c1c
-    }
-
     /* Snow */
-    .snow {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden
-    }
-
+    .snow { position: fixed; inset: 0; pointer-events: none; overflow: hidden }
     .flake {
       position: absolute;
       top: -10px;
@@ -356,25 +198,13 @@
       opacity: .85;
       animation: fall linear infinite;
     }
-
     .flake.gold {
       background: rgba(255, 204, 46, .95);
       box-shadow: 0 0 14px rgba(255, 204, 46, .45);
       opacity: .8;
     }
-
-    @keyframes fall {
-      to {
-        transform: translate3d(var(--dx), 110svh, 0);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .flake {
-        animation: none;
-        opacity: .30;
-      }
-    }
+    @keyframes fall { to { transform: translate3d(var(--dx), 110svh, 0); } }
+    @media (prefers-reduced-motion: reduce) { .flake { animation: none; opacity: .30; } }
   </style>
 </head>
 
@@ -387,7 +217,7 @@
         <div style="font-size:22px">🎄</div>
         <div>
           <b>Tabellone</b>
-          <div class="pill">Spazio = Estrai • Z = Undo • R = Reset • D = Debug</div>
+          <div class="pill">Spazio = Estrai • Aggiornamento automatico</div>
         </div>
       </div>
 
@@ -415,12 +245,10 @@
 
       <div class="controls">
         <button class="primary" id="draw">🎱 Estrai numero</button>
-        <button class="gold" id="undo">↩️ Undo</button>
-        <button class="danger" id="reset">🧨 Reset</button>
       </div>
 
       <div class="hint">
-        Tutti vedono lo stesso tabellone perché è sincronizzato su Google Sheet.
+        Il tabellone si aggiorna in “delta”: scarica solo le nuove estrazioni e i nuovi premi.
       </div>
     </section>
 
@@ -452,130 +280,31 @@
     </section>
   </main>
 
-  <!-- Debug Panel -->
-  <div class="dbg" id="dbg">
-    <div class="dbgTop">
-      <b>Debug</b>
-      <div class="dbgBtns">
-        <button id="dbgCopy">Copia log</button>
-        <button id="dbgClear">Pulisci</button>
-        <button id="dbgClose">Chiudi</button>
-      </div>
-    </div>
-    <div class="dbgLog" id="dbgLog"></div>
-  </div>
-
   <script>
     // ====== CONFIG ======
     const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
-
-
-    // debug attivo se ?debug=1
-    const DEBUG = new URL(location.href).searchParams.get("debug") === "1";
+    const POLL_MS = 1500;
 
     function getRoomId() {
       const url = new URL(location.href);
       const q = (url.searchParams.get("room") || "").trim().toUpperCase();
       const ls = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
       let room = q || ls;
-      if (!room) {
-        room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
-      }
+      if (!room) room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
       if (room) localStorage.setItem("tombola_roomId", room);
       return room;
     }
 
-    // ====== DEBUG LOGGING ======
-    const dbg = document.getElementById("dbg");
-    const dbgLogEl = document.getElementById("dbgLog");
-
-    const logs = [];
-    const MAX_LOGS = 250;
-
-    function ts_() {
-      const d = new Date();
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) + "." + String(d.getMilliseconds()).padStart(3, "0");
-    }
-
-    function log_(level, msg, data) {
-      const line = {
-        t: ts_(),
-        level: String(level || "INFO"),
-        msg: String(msg || ""),
-        data: data === undefined ? null : data
-      };
-      logs.push(line);
-      if (logs.length > MAX_LOGS) logs.shift();
-
-      // console
-      if (level === "ERROR") console.error(line.t, level, msg, data || "");
-      else if (level === "WARN") console.warn(line.t, level, msg, data || "");
-      else console.log(line.t, level, msg, data || "");
-
-      if (DEBUG && dbg && dbg.style.display !== "none") {
-        renderDbg_();
-      }
-    }
-
-    function renderDbg_() {
-      if (!dbgLogEl) return;
-      dbgLogEl.innerHTML = logs.map(l => {
-        const lvlCls = l.level === "ERROR" ? "err" : (l.level === "WARN" ? "warn" : "");
-        const d = l.data ? JSON.stringify(l.data) : "";
-        return `<div class="dbgLine"><span class="lvl ${lvlCls}">${l.level}</span> ${l.t} — ${escapeHtml_(l.msg)}${d ? " " + escapeHtml_(d) : ""}</div>`;
-      }).join("");
-      dbgLogEl.scrollTop = dbgLogEl.scrollHeight;
-    }
-
-    function escapeHtml_(s) {
-      return String(s)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    function toggleDbg_() {
-      if (!dbg) return;
-      const on = dbg.style.display === "block";
-      dbg.style.display = on ? "none" : "block";
-      if (!on) renderDbg_();
-    }
-
-    document.getElementById("dbgClose").onclick = () => { dbg.style.display = "none"; };
-    document.getElementById("dbgClear").onclick = () => { logs.length = 0; renderDbg_(); };
-    document.getElementById("dbgCopy").onclick = async () => {
-      const text = logs.map(l => `${l.t}\t${l.level}\t${l.msg}\t${l.data ? JSON.stringify(l.data) : ""}`).join("\n");
-      try {
-        await navigator.clipboard.writeText(text);
-        log_("INFO", "debug copied");
-      } catch (e) {
-        log_("ERROR", "copy failed", { err: String(e) });
-      }
-    };
-
-    window.addEventListener("keydown", (e) => {
-      if (e.key.toLowerCase() === "d") { toggleDbg_(); }
-    });
-
-    // ====== JSONP helper (con log + debug + timeout) ======
+    // JSONP helper
     function jsonp(action, params = {}) {
       return new Promise((resolve, reject) => {
         const cb = "cb_" + Math.random().toString(36).slice(2);
-        const nocache = Date.now();
-        const full = { action, ...params, callback: cb, nocache };
-        if (DEBUG) full.debug = "1";
-
+        const full = { action, ...params, callback: cb, nocache: Date.now() };
         const qs = new URLSearchParams(full).toString();
         const url = API_BASE + "?" + qs;
 
         const s = document.createElement("script");
-        const t0 = performance.now();
-        const timer = setTimeout(() => {
-          cleanup();
-          reject(new Error("Timeout"));
-        }, 15000);
+        const timer = setTimeout(() => { cleanup(); reject(new Error("Timeout")); }, 15000);
 
         function cleanup() {
           clearTimeout(timer);
@@ -583,25 +312,9 @@
           if (s && s.parentNode) s.parentNode.removeChild(s);
         }
 
-        window[cb] = (data) => {
-          const ms = Math.round(performance.now() - t0);
-          cleanup();
-          const ok = !!(data && data.ok);
-          const reqId = data && data._debug && data._debug.reqId ? data._debug.reqId : null;
-          log_("INFO", "JSONP <- ok", { action, cb, ms, ok, serverReqId: reqId });
+        window[cb] = (data) => { cleanup(); resolve(data); };
+        s.onerror = () => { cleanup(); reject(new Error("Network error")); };
 
-          if (DEBUG && data && data._debug) {
-            log_("INFO", "SERVER _debug", data._debug);
-          }
-          resolve(data);
-        };
-
-        s.onerror = () => {
-          cleanup();
-          reject(new Error("Network error"));
-        };
-
-        log_("INFO", "JSONP -> start", { action, cb, url: url.slice(0, 220) + "..." });
         s.src = url;
         document.body.appendChild(s);
       });
@@ -618,11 +331,7 @@
     const elSorted = document.getElementById("sorted");
     const elEvents = document.getElementById("events");
     const elNet = document.getElementById("net");
-
     const btnDraw = document.getElementById("draw");
-    const btnUndo = document.getElementById("undo");
-    const btnReset = document.getElementById("reset");
-
     const elBoardL = document.getElementById("boardL");
     const elBoardR = document.getElementById("boardR");
 
@@ -653,14 +362,12 @@
       cells[n] = d;
     }
 
-    // ====== BEEP forte (riusa AudioContext) ======
+    // ====== BEEP (solo quando arrivano nuovi premi) ======
     let audioCtx = null;
-
     function ensureAudio_() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => { });
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
     }
-
     window.addEventListener("pointerdown", ensureAudio_, { passive: true });
     window.addEventListener("touchstart", ensureAudio_, { passive: true });
 
@@ -671,9 +378,9 @@
 
         const start = audioCtx.currentTime;
         const repeats = 3;
-        const gap = 0.12;      // pausa tra beep
-        const dur = 0.10;      // durata singolo beep
-        const peak = 0.22;     // volume (aumenta fino a 0.30 se vuoi)
+        const gap = 0.12;
+        const dur = 0.10;
+        const peak = 0.22;
 
         for (let i = 0; i < repeats; i++) {
           const t0 = start + i * (dur + gap);
@@ -691,102 +398,55 @@
           g.gain.exponentialRampToValueAtTime(peak, t0 + 0.01);
           g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
-          o1.connect(g);
-          o2.connect(g);
-          g.connect(audioCtx.destination);
-
-          o1.start(t0);
-          o2.start(t0);
-          o1.stop(t0 + dur + 0.01);
-          o2.stop(t0 + dur + 0.01);
+          o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
+          o1.start(t0); o2.start(t0);
+          o1.stop(t0 + dur + 0.01); o2.stop(t0 + dur + 0.01);
         }
-      } catch (e) { /* niente */ }
+      } catch (e) {}
     }
 
-    // ====== Busy state (UX) ======
-    let busy = 0;
-    let pollInFlight = false;
-    let drawInFlight = false;
-    let lastState = { drawnNumbers: [], last: null, events: [], draws: [] };
-    let lastSig = "";              // ✅ FIX: mancava
-    let suspendPolling = false;
+    // ====== Stato locale (append-only) ======
+    const state = {
+      draws: [],              // [{n, drawIndex, at}]
+      drawnSet: new Set(),    // set dei numeri usciti
+      events: [],             // PRIZE events
+      last: null,
+      roomStatus: "open",
 
-    let prizeBeepArmed = false;   // evita beep al primo render
-    let lastEventsSig = "";       // firma della sezione "Premi verificati"
+      sinceDrawIndex: 0,
+      sinceEventAt: ""        // ISO string
+    };
 
-
-
-
-    function setButtonsState() {
-      const drawnCount = (lastState.drawnNumbers || []).length;
-      btnDraw.disabled = drawInFlight || busy > 0 || drawnCount >= 90;
-      btnUndo.disabled = drawInFlight || busy > 0 || drawnCount === 0;
-      btnReset.disabled = drawInFlight || busy > 0;
+    function setNet(msg){
+      if(!elNet) return;
+      elNet.textContent = msg ? ("Connessione: " + msg) : "Connessione: OK";
     }
 
-
-    function setBusy(on, label) {
-      busy += on ? 1 : -1;
-      if (busy < 0) busy = 0;
-      const isBusy = busy > 0;
-
-      btnDraw.disabled = isBusy || (lastState.drawnNumbers || []).length >= 90;
-      btnUndo.disabled = isBusy || (lastState.drawnNumbers || []).length === 0;
-      btnReset.disabled = isBusy;
-
-      if (elNet) {
-        elNet.textContent = isBusy ? `Connessione: ${label || "Caricamento…"} (${busy})` : "Connessione: OK";
-      }
-    }
-
-    function fmtTime_(iso) {
-      try {
-        const d = new Date(iso);
-        return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      } catch (e) { return ""; }
-    }
-
-    function inferDrawIndex_(eventAtIso, draws) {
-      if (!eventAtIso || !Array.isArray(draws) || !draws.length) return null;
-      let lo = 0, hi = draws.length - 1, best = null;
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        const d = draws[mid];
-        const at = String(d.at || "");
-        if (at && at <= eventAtIso) {
-          best = d;
-          lo = mid + 1;
-        } else {
-          hi = mid - 1;
-        }
-      }
-      return best ? Number(best.drawIndex) : null;
-    }
-
-    function renderFromState(st) {
-      const drawn = st.drawnNumbers || [];
-      const last = st.last || null;
-
-      // board
+    function renderAllFromLocal_(){
+      // reset classi board
       for (let n = 1; n <= 90; n++) {
         if (cells[n]) cells[n].classList.remove("drawn", "last");
       }
-      drawn.forEach(n => {
+      // applica drawn
+      for (const n of state.drawnSet) {
         if (cells[n]) cells[n].classList.add("drawn");
-      });
-      if (last && cells[last]) {
-        cells[last].classList.add("last");
-        elLast.textContent = last;
-        elSm.textContent = `💬 Smorfia: ${SMORFIA[last] || "—"}`;
+      }
+
+      // last
+      if (state.last && cells[state.last]) {
+        cells[state.last].classList.add("last");
+        elLast.textContent = state.last;
+        elSm.textContent = `💬 Smorfia: ${SMORFIA[state.last] || "—"}`;
       } else {
         elLast.textContent = "—";
         elSm.textContent = "Pronto a iniziare ✨";
       }
-      elCount.textContent = `${drawn.length} / 90`;
+
+      elCount.textContent = `${state.draws.length} / 90`;
 
       // storico (reverse)
       elHist.innerHTML = "";
-      (st.draws || []).slice().reverse().forEach(d => {
+      state.draws.slice().reverse().forEach(d => {
         const c = document.createElement("div");
         c.className = "chip";
         c.textContent = d.n;
@@ -795,28 +455,32 @@
 
       // ordinati
       elSorted.innerHTML = "";
-      [...drawn].sort((a, b) => a - b).forEach(n => {
+      [...state.drawnSet].sort((a,b)=>a-b).forEach(n => {
         const c = document.createElement("div");
         c.className = "chip";
         c.textContent = n;
         elSorted.appendChild(c);
       });
 
-      // premi verificati: “prima volta per premio”
+      // premi verificati (prima volta per premio)
+      renderPrizes_();
+    }
+
+    function fmtTime_(iso) {
+      try { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+      catch (e) { return ""; }
+    }
+
+    function renderPrizes_(){
       const prizeOrder = ["AMBO", "TERNO", "QUATERNA", "CINQUINA", "TOMBOLA"];
-      const events = (st.events || []).filter(x => x.type === "PRIZE" && prizeOrder.includes(String(x.prize || "")));
+      const ev = state.events.slice(); // già solo PRIZE
 
-      const enriched = events.map(e => {
-        const payload = e.payload || {};
-        const di = Number(payload.drawIndex);
-        const drawIndex = Number.isFinite(di) ? di : inferDrawIndex_(String(e.at || ""), st.draws || []);
-        return { ...e, _drawIndex: drawIndex };
-      }).filter(e => Number.isFinite(e._drawIndex));
-
+      // scegliamo la prima drawIndex per premio e dentro quella i vincitori
       const firstDrawByPrize = new Map();
-      for (const e of enriched) {
-        const pr = String(e.prize);
-        const di = e._drawIndex;
+      for (const e of ev) {
+        const pr = String(e.prize || "");
+        const di = Number(e.payload && e.payload.drawIndex);
+        if (!prizeOrder.includes(pr) || !Number.isFinite(di)) continue;
         const cur = firstDrawByPrize.get(pr);
         if (cur == null || di < cur) firstDrawByPrize.set(pr, di);
       }
@@ -829,160 +493,145 @@
         empty.style.fontWeight = "900";
         empty.textContent = "Nessun premio ancora.";
         elEvents.appendChild(empty);
-      } else {
-        for (const pr of prizeOrder) {
-          if (!firstDrawByPrize.has(pr)) continue;
-
-          const di = firstDrawByPrize.get(pr);
-          const winners = enriched
-            .filter(e => String(e.prize) === pr && e._drawIndex === di)
-            .sort((a, b) => {
-              const an = String(a.name || a.playerId || "");
-              const bn = String(b.name || b.playerId || "");
-              if (an < bn) return -1;
-              if (an > bn) return 1;
-              return (Number(a.cardIndex) || 0) - (Number(b.cardIndex) || 0);
-            });
-
-          const parts = [pr];
-          for (const w of winners) {
-            const name = String(w.name || w.playerId || "").trim() || "—";
-            const card = Number(w.cardIndex) + 1;
-            const win = Array.isArray(w.payload && w.payload.winNumbers) ? w.payload.winNumbers : [];
-            const nums = win.length ? win.join(", ") : "—";
-            parts.push(`${name} — Cartella ${card} — Numeri: ${nums}`);
-          }
-
-          const line = document.createElement("div");
-          line.className = "eventLine";
-          const t = winners.length ? fmtTime_(winners[0].at) : "";
-          line.textContent = parts.join(" — ") + (t ? `  •  ${t}` : "");
-          elEvents.appendChild(line);
-        }
+        return;
       }
 
-      // ✅ Beep SOLO dopo che "Premi verificati" è stato aggiornato in pagina
-      const newSig = (elEvents.textContent || "").trim();
-      const hasPrizeLines = elEvents.querySelectorAll(".eventLine").length > 0;
+      for (const pr of prizeOrder) {
+        if (!firstDrawByPrize.has(pr)) continue;
+        const di = firstDrawByPrize.get(pr);
 
-      if (!prizeBeepArmed) {
-        // primo render: memorizzo e non suono
-        prizeBeepArmed = true;
-        lastEventsSig = newSig;
-      } else {
-        const changed = newSig !== lastEventsSig;
-        lastEventsSig = newSig;
+        const winners = ev
+          .filter(e => String(e.prize) === pr && Number(e.payload && e.payload.drawIndex) === di)
+          .sort((a,b)=>{
+            const an = String(a.name || a.playerId || "");
+            const bn = String(b.name || b.playerId || "");
+            if (an < bn) return -1;
+            if (an > bn) return 1;
+            return (Number(a.cardIndex)||0) - (Number(b.cardIndex)||0);
+          });
 
-        if (hasPrizeLines && changed) {
-          // dopo update DOM + paint
-          requestAnimationFrame(() => setTimeout(() => beep(), 0));
+        const parts = [pr];
+        for (const w of winners) {
+          const name = String(w.name || w.playerId || "").trim() || "—";
+          const card = Number(w.cardIndex) + 1;
+          const win = Array.isArray(w.payload && w.payload.winNumbers) ? w.payload.winNumbers : [];
+          const nums = win.length ? win.join(", ") : "—";
+          parts.push(`${name} — Cartella ${card} — Numeri: ${nums}`);
         }
+
+        const line = document.createElement("div");
+        line.className = "eventLine";
+        const t = winners.length ? fmtTime_(winners[0].at) : "";
+        line.textContent = parts.join(" — ") + (t ? `  •  ${t}` : "");
+        elEvents.appendChild(line);
       }
-
-
-      // bottoni coerenti
-      /* btnDraw.disabled = busy > 0 || drawn.length >= 90;
-      btnUndo.disabled = busy > 0 || drawn.length === 0;
-      btnReset.disabled = busy > 0; */
     }
 
-    async function poll() {
-      if (!roomId) return;
-      if (pollInFlight) return;
+    // ====== Delta polling ======
+    let pollInFlight = false;
+    let drawInFlight = false;
+    let prizeBeepArmed = false;
+
+    async function pollDelta(){
+      if(!roomId) return;
+      if(pollInFlight) return;
       pollInFlight = true;
 
-      try {
-        const st = await jsonp("state", { roomId });
-        if (st && st.ok) {
-          /* const prizeCount = (st.events || []).length;
+      try{
+        setNet("Sync…");
 
-          // inizializza senza suonare
-          if (lastPrizeCount === null) {
-            lastPrizeCount = prizeCount;
-          } else {
-            // suona SOLO se il numero di premi AUMENTA (nuovo premio)
-            if (prizeCount > lastPrizeCount) beep();
-            lastPrizeCount = prizeCount;
-          } */
+        const res = await jsonp("delta", {
+          roomId,
+          sinceDrawIndex: state.sinceDrawIndex,
+          sinceEventAt: state.sinceEventAt
+        });
 
-          lastState = st;
-          renderFromState(st);
-          setButtonsState();
-        }
-      } catch (e) {
-        log_("ERROR", "poll error", { err: String(e) });
-      } finally {
-        pollInFlight = false;
-      }
-
-    }
-
-
-    async function draw() {
-      if (!roomId) return;
-      if (drawInFlight) return;
-
-      const drawnSet = new Set(lastState.drawnNumbers || []);
-      if (drawnSet.size >= 90) return;
-
-      drawInFlight = true;
-      setButtonsState();
-
-      try {
-        let n;
-        do { n = Math.floor(Math.random() * 90) + 1; } while (drawnSet.has(n));
-
-        const res = await jsonp("draw", { roomId, n });
-        if (!res.ok) {
-          await poll();
+        if(!res || !res.ok){
+          setNet("Errore");
           return;
         }
-        await poll();
-      } finally {
+
+        // new draws
+        const newDraws = Array.isArray(res.newDraws) ? res.newDraws : [];
+        for(const d of newDraws){
+          const n = Number(d.n);
+          const di = Number(d.drawIndex);
+          const at = String(d.at || "");
+          if(!Number.isFinite(n) || n<1 || n>90) continue;
+          if(!Number.isFinite(di) || di<=state.sinceDrawIndex) continue;
+
+          state.draws.push({ n, drawIndex: di, at });
+          state.drawnSet.add(n);
+          state.last = n;
+          state.sinceDrawIndex = Math.max(state.sinceDrawIndex, di);
+        }
+
+        // new events (PRIZE)
+        const newEvents = Array.isArray(res.newEvents) ? res.newEvents : [];
+        let gotPrize = false;
+        for(const e of newEvents){
+          const at = String(e.at || "");
+          if(at && at <= state.sinceEventAt) continue;
+
+          state.events.push(e);
+          if(at) state.sinceEventAt = at; // eventi già ordinati dal server
+          gotPrize = true;
+        }
+
+        state.roomStatus = String(res.roomStatus || state.roomStatus || "");
+
+        // aggiorna UI (qui facciamo render completo: semplice e già veloce)
+        if(newDraws.length || newEvents.length){
+          renderAllFromLocal_();
+        }
+
+        // beep solo dopo primo “boot”
+        if(!prizeBeepArmed){
+          prizeBeepArmed = true;
+        }else{
+          if(gotPrize) requestAnimationFrame(() => setTimeout(()=>beep(), 0));
+        }
+
+        // disabilita estrazione se chiusa o finita
+        btnDraw.disabled = drawInFlight || state.sinceDrawIndex >= 90 || String(state.roomStatus).toLowerCase() === "closed";
+        setNet("OK");
+      }catch(e){
+        setNet("Errore rete");
+      }finally{
+        pollInFlight = false;
+      }
+    }
+
+    async function draw(){
+      if(!roomId) return;
+      if(drawInFlight) return;
+      if(state.sinceDrawIndex >= 90) return;
+      if(String(state.roomStatus).toLowerCase() === "closed") return;
+
+      drawInFlight = true;
+      btnDraw.disabled = true;
+
+      try{
+        // scegli numero non ancora uscito
+        let n;
+        do { n = Math.floor(Math.random() * 90) + 1; } while (state.drawnSet.has(n));
+
+        const res = await jsonp("draw", { roomId, n });
+        // se ok, il delta arriverà al prossimo poll (ma forziamo subito)
+        await pollDelta();
+      }finally{
         drawInFlight = false;
-        setButtonsState();
+        btnDraw.disabled = state.sinceDrawIndex >= 90 || String(state.roomStatus).toLowerCase() === "closed";
       }
     }
-
-
-
-    async function undo() {
-      if (!roomId) return;
-      suspendPolling = true;
-      try {
-        await jsonp("undoDraw", { roomId });
-        await poll();
-      } finally {
-        suspendPolling = false;
-      }
-    }
-
-
-    async function resetAll() {
-      if (!roomId) return;
-      if (!confirm("Reset partita? Cancello estrazioni + marcature + premi.")) return;
-
-      suspendPolling = true;
-      try {
-        await jsonp("resetGame", { roomId });
-        await poll();
-      } finally {
-        suspendPolling = false;
-      }
-    }
-
 
     btnDraw.onclick = draw;
-    btnUndo.onclick = undo;
-    btnReset.onclick = resetAll;
 
     window.addEventListener("keydown", (e) => {
       if (e.key === " ") { e.preventDefault(); draw(); }
-      if (e.key.toLowerCase() === "z") { undo(); }
-      if (e.key.toLowerCase() === "r") { resetAll(); }
     });
 
-    // ====== Snow ======
+    // Snow
     const snow = document.getElementById("snow");
     const N = 26;
     for (let i = 0; i < N; i++) {
@@ -1004,17 +653,13 @@
       snow.appendChild(f);
     }
 
-    // ====== BOOT + polling seriale ======
-    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-    (async () => {
-      await poll();
-      while (true) {
-        if (!suspendPolling) await poll();
-        await sleep(1500);
-      }
+    // BOOT
+    (async ()=>{
+      // primo giro: prende tutto
+      await pollDelta();
+      // loop
+      setInterval(()=>{ pollDelta(); }, POLL_MS);
     })();
   </script>
 </body>
-
 </html>
