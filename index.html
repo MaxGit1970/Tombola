@@ -177,7 +177,9 @@
         <button class="btn red" id="newRoom">➕ Crea nuova Room</button>
         <a class="btn gold" id="goTab" href="./tabellone.html">Apri Tabellone (Conduttore)</a>
         <a class="btn gold" id="goCards" href="./cartelle.html">Apri Cartelle (Giocatori)</a>
-        <button class="btn gold" id="purge">🧹 Elimina Room precedenti</button>
+
+        <!-- ✅ rinominato: elimina TUTTE le room -->
+        <button class="btn gold" id="purgeAll">🧹 Elimina tutte le Rooms</button>
       </div>
     </div>
 
@@ -258,22 +260,28 @@
       }
     };
 
-    document.getElementById("purge").onclick = async ()=>{
-      // se non ho una room corrente, riprovo a caricarla
-      if(!currentRoomId){
-        try{ await loadOpenRoom(); } catch(e){}
-      }
-      if(!currentRoomId){
-        alert("Nessuna room OPEN trovata. Crea una room prima.");
-        return;
-      }
-      if(!confirm("Elimino TUTTE le altre room dal Google Sheet, mantenendo solo " + currentRoomId + ". Confermi?")) return;
+    // ✅ nuovo: elimina TUTTE le rooms dal foglio
+    document.getElementById("purgeAll").onclick = async ()=>{
+      const msg =
+        "ATTENZIONE: questa operazione eliminerà TUTTE le Rooms dal Google Sheet (tabella Rooms).\n\n" +
+        "Vuoi davvero procedere?";
+      if(!confirm(msg)) return;
 
-      const res = await jsonp("purgeOtherRooms", { keepRoomId: currentRoomId });
-      if(res && res.ok){
-        alert("Fatto ✅ (tenuta solo: " + currentRoomId + ")");
-      }else{
-        alert("Errore purge");
+      // opzionale: doppia conferma per evitare click accidentali
+      if(!confirm("Conferma finale: elimino davvero TUTTE le Rooms?")) return;
+
+      try{
+        const res = await jsonp("purgeAllRooms");
+        if(res && res.ok){
+          alert("Fatto ✅ (tutte le Rooms eliminate)");
+          setRoom(null);
+          // ricarico lo stato dal server (per sicurezza)
+          try{ await loadOpenRoom(); }catch(e){}
+        }else{
+          alert("Errore: purgeAllRooms non riuscito");
+        }
+      }catch(e){
+        alert("Errore rete/server: " + String(e));
       }
     };
 

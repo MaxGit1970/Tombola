@@ -83,11 +83,12 @@ function route_(e){
       case "undoDraw":        out = undoDraw_(p); break;
       case "resetGame":       out = resetGame_(p); break;
       case "purgeOtherRooms": out = purgeOtherRooms_(p); break;
+      case "purgeAllRooms": out = purgeAllRooms_(p); break;
       default:
         out = {
           ok:false,
           error:"Unknown action",
-          hint:"Use ?action=init | createRoom | getOpenRoom | join | registerCards | draw | mark | state | undoDraw | resetGame | purgeOtherRooms"
+          hint:"Use ?action=init | createRoom | getOpenRoom | join | registerCards | draw | mark | state | undoDraw | resetGame | purgeOtherRooms | purgeAllRooms"
         };
         dbg_("WARN","Unknown action", {action});
     }
@@ -686,6 +687,47 @@ function purgeOtherRooms_(p){
     return {ok:true, keepRoomId, clearedSheets: cleared};
   });
 }
+
+function purgeAllRooms_(){
+  return lock_(()=>{
+    init_();
+    const allSheets = Object.values(CFG.SHEETS).filter(x => x !== CFG.SHEETS.LOGS); // non toccare Logs
+    const cleared = [];
+
+    allSheets.forEach(name=>{
+      const sh = getOrCreateSheet_(name);
+      const lastRow = sh.getLastRow();
+      let deleted = 0;
+
+      // elimina tutte le righe dati, preservando header (riga 1)
+      if(lastRow >= 2){
+        sh.deleteRows(2, lastRow - 1);
+        deleted = lastRow - 1;
+      }
+
+      cleared.push({sheet:name, deleted});
+    });
+
+    dbg_("WARN","purgeAllRooms", {cleared});
+    return {ok:true, clearedSheets: cleared};
+  });
+}
+
+
+
+function xpurgeAllRooms_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID); // o come lo apri tu
+  const sh = ss.getSheetByName("Rooms");
+  if (!sh) return { ok:false, error:"Sheet Rooms non trovato" };
+
+  const lastRow = sh.getLastRow();
+  // se hai intestazioni in riga 1, cancella da riga 2 in poi
+  if (lastRow >= 2) {
+    sh.getRange(2, 1, lastRow - 1, sh.getLastColumn()).clearContent();
+  }
+  return { ok:true };
+}
+
 
 // -------------------- TABELLONE logic --------------------
 function autoTabelloneOnDraw_(roomId, n){
