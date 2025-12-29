@@ -653,19 +653,50 @@
       cells[n] = d;
     }
 
+    // ====== BEEP forte (riusa AudioContext) ======
+    let audioCtx = null;
+
+    function ensureAudio_() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => { });
+    }
+
+    window.addEventListener("pointerdown", ensureAudio_, { passive: true });
+    window.addEventListener("touchstart", ensureAudio_, { passive: true });
+
     function beep() {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.connect(g); g.connect(ctx.destination);
-        o.type = "triangle";
-        o.frequency.value = 880;
-        g.gain.value = 0.06;
-        o.start();
-        setTimeout(() => { o.stop(); ctx.close(); }, 120);
-      } catch (e) { }
+        ensureAudio_();
+        if (!audioCtx) return;
+
+        const t0 = audioCtx.currentTime;
+
+        // due oscillatori per un beep più “corposo”
+        const o1 = audioCtx.createOscillator();
+        const o2 = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+
+        o1.type = "sine";
+        o2.type = "square";
+        o1.frequency.setValueAtTime(880, t0);
+        o2.frequency.setValueAtTime(1320, t0);
+
+        // envelope (attacco veloce, decadimento)
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.01);  // <<< più forte
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.20);
+
+        o1.connect(g);
+        o2.connect(g);
+        g.connect(audioCtx.destination);
+
+        o1.start(t0);
+        o2.start(t0);
+        o1.stop(t0 + 0.22);
+        o2.stop(t0 + 0.22);
+      } catch (e) { /* niente */ }
     }
+
 
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -676,6 +707,7 @@
     let lastState = { drawnNumbers: [], last: null, events: [], draws: [] };
     let lastSig = "";              // ✅ FIX: mancava
     let suspendPolling = false;
+    let lastPrizeCount = null;     // null = non inizializzato
 
 
 
@@ -837,9 +869,16 @@
       try {
         const st = await jsonp("state", { roomId });
         if (st && st.ok) {
-          const sig = JSON.stringify({ last: st.last, evCount: (st.events || []).length });
-          if (lastSig && sig !== lastSig) beep();
-          lastSig = sig;
+          const prizeCount = (st.events || []).length;
+
+          // inizializza senza suonare
+          if (lastPrizeCount === null) {
+            lastPrizeCount = prizeCount;
+          } else {
+            // suona SOLO se il numero di premi AUMENTA (nuovo premio)
+            if (prizeCount > lastPrizeCount) beep();
+            lastPrizeCount = prizeCount;
+          }
 
           lastState = st;
           renderFromState(st);
