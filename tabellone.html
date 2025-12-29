@@ -490,15 +490,22 @@
   }
 
   // ====== Stato locale (append-only) ======
+  // ====== Stato locale (append-only) ======
   const state = {
     draws: [],
     drawnSet: new Set(),
     events: [],
     last: null,
     roomStatus: "open",
-    sinceDrawIndex: 0,
-    sinceEventAt: ""
+
+    // ✅ nuovi cursori "row-based" (globali sul foglio)
+    sinceDrawRow: 1,
+    sinceEventRow: 1,
+
+    // manteniamo anche drawIndex per UI/disable
+    sinceDrawIndex: 0
   };
+
 
   function setNet(msg) {
     if (!elNet) return;
@@ -660,22 +667,36 @@
 
       const res = await jsonp("delta", {
         roomId,
-        sinceDrawIndex: state.sinceDrawIndex,
-        sinceEventAt: state.sinceEventAt
+        // ✅ nuovi cursori
+        sinceDrawRow: state.sinceDrawRow,
+        sinceEventRow: state.sinceEventRow,
+
+        // (compat legacy: non fa male lasciarlo)
+        sinceDrawIndex: state.sinceDrawIndex || 0
       });
+
+
 
       if (!res || !res.ok) {
         setNet("Errore");
         return;
       }
 
+            // ✅ aggiorna cursori row-based SEMPRE (anche se non ci sono eventi)
+      if (Number.isFinite(Number(res.lastDrawRow)))  state.sinceDrawRow  = Number(res.lastDrawRow);
+      if (Number.isFinite(Number(res.lastEventRow))) state.sinceEventRow = Number(res.lastEventRow);
+
       const newDraws = Array.isArray(res.newDraws) ? res.newDraws : [];
       for (const d of newDraws) {
-        const n = Number(d.n);
+        const n  = Number(d.n);
         const di = Number(d.drawIndex);
         const at = String(d.at || "");
+
         if (!Number.isFinite(n) || n < 1 || n > 90) continue;
         if (!Number.isFinite(di) || di <= state.sinceDrawIndex) continue;
+
+        // extra safety contro duplicati
+        if (state.drawnSet.has(n)) continue;
 
         state.draws.push({ n, drawIndex: di, at });
         state.drawnSet.add(n);
@@ -685,14 +706,11 @@
 
       const newEvents = Array.isArray(res.newEvents) ? res.newEvents : [];
       for (const e of newEvents) {
-        const at = String(e.at || "");
-        if (at && at <= state.sinceEventAt) continue;
-
         state.events.push(e);
-        if (at) state.sinceEventAt = at;
       }
 
       state.roomStatus = String(res.roomStatus || state.roomStatus || "");
+
 
       if (newDraws.length || newEvents.length) renderAllFromLocal_();
 
