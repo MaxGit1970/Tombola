@@ -672,8 +672,19 @@
     // ====== Busy state (UX) ======
     let busy = 0;
     let pollInFlight = false;
+    let drawInFlight = false;
     let lastState = { drawnNumbers: [], last: null, events: [], draws: [] };
-    let suspendPolling = false; // ✅ blocca i poll mentre faccio draw/undo/reset
+    let lastSig = "";              // ✅ FIX: mancava
+    let suspendPolling = false;
+
+
+
+    function setButtonsState() {
+      const drawnCount = (lastState.drawnNumbers || []).length;
+      btnDraw.disabled = drawInFlight || busy > 0 || drawnCount >= 90;
+      btnUndo.disabled = drawInFlight || busy > 0 || drawnCount === 0;
+      btnReset.disabled = drawInFlight || busy > 0;
+    }
 
 
     function setBusy(on, label) {
@@ -813,9 +824,9 @@
       }
 
       // bottoni coerenti
-      btnDraw.disabled = busy > 0 || drawn.length >= 90;
+      /* btnDraw.disabled = busy > 0 || drawn.length >= 90;
       btnUndo.disabled = busy > 0 || drawn.length === 0;
-      btnReset.disabled = busy > 0;
+      btnReset.disabled = busy > 0; */
     }
 
     async function poll() {
@@ -823,61 +834,52 @@
       if (pollInFlight) return;
       pollInFlight = true;
 
-      setBusy(true, "Sync state");
-      const t0 = performance.now();
-
       try {
         const st = await jsonp("state", { roomId });
-        const ms = Math.round(performance.now() - t0);
-
         if (st && st.ok) {
-          const oldLast = lastState.last;
-          const oldEv = (lastState.events || []).length;
-          const newLast = st.last;
-          const newEv = (st.events || []).length;
-          if (oldLast !== null && (oldLast !== newLast || oldEv !== newEv)) beep();
+          const sig = JSON.stringify({ last: st.last, evCount: (st.events || []).length });
+          if (lastSig && sig !== lastSig) beep();
+          lastSig = sig;
 
           lastState = st;
           renderFromState(st);
-          log_("INFO", "poll ok", { ms, last: st.last, draws: (st.draws || []).length, events: (st.events || []).length });
-        } else {
-          log_("WARN", "poll not ok", { ms, st });
+          setButtonsState();
         }
       } catch (e) {
-        const ms = Math.round(performance.now() - t0);
-        log_("ERROR", "poll failed", { ms, err: String(e) });
+        log_("ERROR", "poll error", { err: String(e) });
       } finally {
-        setBusy(false);
         pollInFlight = false;
       }
+
     }
+
 
     async function draw() {
       if (!roomId) return;
+      if (drawInFlight) return;
 
-      // ✅ sospendi polling durante l’azione
-      suspendPolling = true;
+      const drawnSet = new Set(lastState.drawnNumbers || []);
+      if (drawnSet.size >= 90) return;
+
+      drawInFlight = true;
+      setButtonsState();
 
       try {
-        const drawnSet = new Set(lastState.drawnNumbers || []);
-        if (drawnSet.size >= 90) return;
-
         let n;
         do { n = Math.floor(Math.random() * 90) + 1; } while (drawnSet.has(n));
 
         const res = await jsonp("draw", { roomId, n });
         if (!res.ok) {
-          // se draw fallisce, ricarica lo stato
           await poll();
           return;
         }
-
-        // ✅ refresh immediato dopo draw
         await poll();
       } finally {
-        suspendPolling = false;
+        drawInFlight = false;
+        setButtonsState();
       }
     }
+
 
 
     async function undo() {
