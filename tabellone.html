@@ -365,420 +365,414 @@
   </main>
 
   <script>
+  // ====== CONFIG ======
+  const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
+  const POLL_MS = 1000;
 
-    // ====== CONFIG ======
-    const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
-    const POLL_MS = 1500;
+  function getRoomId() {
+    const url = new URL(location.href);
+    const q = (url.searchParams.get("room") || "").trim().toUpperCase();
+    const ls = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
+    let room = q || ls;
+    if (!room) room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
+    if (room) localStorage.setItem("tombola_roomId", room);
+    return room;
+  }
 
-    function getRoomId() {
-      const url = new URL(location.href);
-      const q = (url.searchParams.get("room") || "").trim().toUpperCase();
-      const ls = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
-      let room = q || ls;
-      if (!room) room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
-      if (room) localStorage.setItem("tombola_roomId", room);
-      return room;
-    }
+  // JSONP helper
+  function jsonp(action, params = {}) {
+    return new Promise((resolve, reject) => {
+      const cb = "cb_" + Math.random().toString(36).slice(2);
+      const full = { action, ...params, callback: cb, nocache: Date.now() };
+      const qs = new URLSearchParams(full).toString();
+      const url = API_BASE + "?" + qs;
 
-    // JSONP helper
-    function jsonp(action, params = {}) {
-      return new Promise((resolve, reject) => {
-        const cb = "cb_" + Math.random().toString(36).slice(2);
-        const full = { action, ...params, callback: cb, nocache: Date.now() };
-        const qs = new URLSearchParams(full).toString();
-        const url = API_BASE + "?" + qs;
+      const s = document.createElement("script");
+      const timer = setTimeout(() => { cleanup(); reject(new Error("Timeout")); }, 15000);
 
-        const s = document.createElement("script");
-        const timer = setTimeout(() => { cleanup(); reject(new Error("Timeout")); }, 15000);
-
-        function cleanup() {
-          clearTimeout(timer);
-          if (window[cb]) delete window[cb];
-          if (s && s.parentNode) s.parentNode.removeChild(s);
-        }
-
-        window[cb] = (data) => { cleanup(); resolve(data); };
-        s.onerror = () => { cleanup(); reject(new Error("Network error")); };
-
-        s.src = url;
-        document.body.appendChild(s);
-      });
-    }
-
-    // ====== UI refs ======
-    const roomId = getRoomId();
-    document.getElementById("roomBadge").textContent = roomId || "—";
-
-    const elLast = document.getElementById("last");
-    const elSm = document.getElementById("smorfia");
-    const elCount = document.getElementById("count");
-    const elHist = document.getElementById("history");
-    const elSorted = document.getElementById("sorted");
-    const elEvents = document.getElementById("events");
-    const elNet = document.getElementById("net");
-    const btnDraw = document.getElementById("draw");
-    const elBoardL = document.getElementById("boardL");
-    const elBoardR = document.getElementById("boardR");
-
-    const SMORFIA = [
-      "",
-      "L'Italia", "La bambina", "La gatta", "Il maiale", "La mano", "Quella che guarda in terra", "Il vaso", "La Madonna", "La figliolanza",
-      "I fagioli", "I topolini", "Il soldato", "Sant'Antonio", "L'ubriaco", "Il ragazzo", "Il sedere", "La disgrazia", "Il sangue", "La risata",
-      "La festa", "La donna nuda", "Il pazzo", "Lo scemo", "Le guardie", "Natale", "Anna", "Il pitale", "I seni", "Il padre dei bambini",
-      "Le palle del tenente", "Il padrone di casa", "Il capitone", "Gli anni di Cristo", "La testa", "L'uccellino", "Le nacchere", "Il monaco", "Le botte",
-      "Il cappello", "La noia", "Il coltello", "Il caffè", "La donna al balcone", "La prigione", "Il vino buono", "Il denaro", "Il morto che parla",
-      "Il morto", "Il pane", "Il giardino", "La mamma", "Il vecchio", "Il cappotto", "La musica", "La caduta", "Il gobbo", "Il pacco",
-      "I peli", "Il lamento", "Il cacciatore", "Il pianto", "Il morto ammazzato", "La sposa", "Le lacrime", "La zuppa cotta", "Sottosopra",
-      "Il palazzo", "L'ommo 'e merda", "Il ponte", "L'ospedale", "La casa", "I diavoli", "La fontana", "La lanterna", "La meraviglia",
-      "La puttana", "Il ladro", "La bocca", "I piedi", "La tavola imbandita", "Il re", "Le donne", "I fiori", "Il maltempo",
-      "La chiesa", "Le anime del purgatorio", "La bottega", "I pidocchi", "Il buon cuore", "I bambini", "La paura", "La festa grande", "La fortuna"
-    ];
-
-    // crea celle 1..90 in due metà (5+5)
-    const cells = [];
-    for (let n = 1; n <= 90; n++) {
-      const col = (n - 1) % 10;
-      const d = document.createElement("div");
-      d.className = "cell";
-      d.textContent = n;
-      d.dataset.n = n;
-      if (col < 5) elBoardL.appendChild(d);
-      else elBoardR.appendChild(d);
-      cells[n] = d;
-    }
-
-    // ====== BEEP (solo quando arrivano nuovi premi) ======
-    let audioCtx = null;
-    function ensureAudio_() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => { });
-    }
-    window.addEventListener("pointerdown", ensureAudio_, { passive: true });
-    window.addEventListener("touchstart", ensureAudio_, { passive: true });
-
-    function beep() {
-      try {
-        ensureAudio_();
-        if (!audioCtx) return;
-
-        const start = audioCtx.currentTime;
-        const repeats = 3;
-        const gap = 0.12;
-        const dur = 0.10;
-        const peak = 0.22;
-
-        for (let i = 0; i < repeats; i++) {
-          const t0 = start + i * (dur + gap);
-
-          const o1 = audioCtx.createOscillator();
-          const o2 = audioCtx.createOscillator();
-          const g = audioCtx.createGain();
-
-          o1.type = "sine";
-          o2.type = "square";
-          o1.frequency.setValueAtTime(880, t0);
-          o2.frequency.setValueAtTime(1320, t0);
-
-          g.gain.setValueAtTime(0.0001, t0);
-          g.gain.exponentialRampToValueAtTime(peak, t0 + 0.01);
-          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
-          o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
-          o1.start(t0); o2.start(t0);
-          o1.stop(t0 + dur + 0.01); o2.stop(t0 + dur + 0.01);
-        }
-      } catch (e) { }
-    }
-
-    // ====== Stato locale (append-only) ======
-    const state = {
-      draws: [],              // [{n, drawIndex, at}]
-      drawnSet: new Set(),    // set dei numeri usciti
-      events: [],             // PRIZE events
-      last: null,
-      roomStatus: "open",
-
-      sinceDrawIndex: 0,
-      sinceEventAt: ""        // ISO string
-    };
-
-    function setNet(msg) {
-      if (!elNet) return;
-      elNet.textContent = msg ? ("Connessione: " + msg) : "Connessione: OK";
-    }
-
-    function renderAllFromLocal_() {
-      // reset classi board
-      for (let n = 1; n <= 90; n++) {
-        if (cells[n]) cells[n].classList.remove("drawn", "last");
-      }
-      // applica drawn
-      for (const n of state.drawnSet) {
-        if (cells[n]) cells[n].classList.add("drawn");
+      function cleanup() {
+        clearTimeout(timer);
+        if (window[cb]) delete window[cb];
+        if (s && s.parentNode) s.parentNode.removeChild(s);
       }
 
-      // last
-      if (state.last && cells[state.last]) {
-        cells[state.last].classList.add("last");
-        elLast.textContent = state.last;
-        elSm.textContent = `💬 Smorfia: ${SMORFIA[state.last] || "—"}`;
-      } else {
-        elLast.textContent = "—";
-        elSm.textContent = "Pronto a iniziare ✨";
+      window[cb] = (data) => { cleanup(); resolve(data); };
+      s.onerror = () => { cleanup(); reject(new Error("Network error")); };
+
+      s.src = url;
+      document.body.appendChild(s);
+    });
+  }
+
+  // ====== UI refs ======
+  const roomId = getRoomId();
+  document.getElementById("roomBadge").textContent = roomId || "—";
+
+  const elLast = document.getElementById("last");
+  const elSm = document.getElementById("smorfia");
+  const elCount = document.getElementById("count");
+  const elHist = document.getElementById("history");
+  const elSorted = document.getElementById("sorted");
+  const elEvents = document.getElementById("events");
+  const elNet = document.getElementById("net");
+  const btnDraw = document.getElementById("draw");
+  const elBoardL = document.getElementById("boardL");
+  const elBoardR = document.getElementById("boardR");
+
+  const SMORFIA = [
+    "",
+    "L'Italia", "La bambina", "La gatta", "Il maiale", "La mano", "Quella che guarda in terra", "Il vaso", "La Madonna", "La figliolanza",
+    "I fagioli", "I topolini", "Il soldato", "Sant'Antonio", "L'ubriaco", "Il ragazzo", "Il sedere", "La disgrazia", "Il sangue", "La risata",
+    "La festa", "La donna nuda", "Il pazzo", "Lo scemo", "Le guardie", "Natale", "Anna", "Il pitale", "I seni", "Il padre dei bambini",
+    "Le palle del tenente", "Il padrone di casa", "Il capitone", "Gli anni di Cristo", "La testa", "L'uccellino", "Le nacchere", "Il monaco", "Le botte",
+    "Il cappello", "La noia", "Il coltello", "Il caffè", "La donna al balcone", "La prigione", "Il vino buono", "Il denaro", "Il morto che parla",
+    "Il morto", "Il pane", "Il giardino", "La mamma", "Il vecchio", "Il cappotto", "La musica", "La caduta", "Il gobbo", "Il pacco",
+    "I peli", "Il lamento", "Il cacciatore", "Il pianto", "Il morto ammazzato", "La sposa", "Le lacrime", "La zuppa cotta", "Sottosopra",
+    "Il palazzo", "L'ommo 'e merda", "Il ponte", "L'ospedale", "La casa", "I diavoli", "La fontana", "La lanterna", "La meraviglia",
+    "La puttana", "Il ladro", "La bocca", "I piedi", "La tavola imbandita", "Il re", "Le donne", "I fiori", "Il maltempo",
+    "La chiesa", "Le anime del purgatorio", "La bottega", "I pidocchi", "Il buon cuore", "I bambini", "La paura", "La festa grande", "La fortuna"
+  ];
+
+  // ====== CREA TABELLONE 1..90 (QUESTO È QUELLO CHE TI MANCAVA) ======
+  const cells = [];
+  for (let n = 1; n <= 90; n++) {
+    const col = (n - 1) % 10;
+    const d = document.createElement("div");
+    d.className = "cell";
+    d.textContent = n;
+    d.dataset.n = n;
+    if (col < 5) elBoardL.appendChild(d);
+    else elBoardR.appendChild(d);
+    cells[n] = d;
+  }
+
+  // ====== BEEP (solo quando arrivano nuovi premi mostrati) ======
+  let audioCtx = null;
+  function ensureAudio_() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  }
+  window.addEventListener("pointerdown", ensureAudio_, { passive: true });
+  window.addEventListener("touchstart", ensureAudio_, { passive: true });
+
+  function beep() {
+    try {
+      ensureAudio_();
+      if (!audioCtx) return;
+
+      const start = audioCtx.currentTime;
+      const repeats = 3;
+      const gap = 0.12;
+      const dur = 0.10;
+      const peak = 0.22;
+
+      for (let i = 0; i < repeats; i++) {
+        const t0 = start + i * (dur + gap);
+
+        const o1 = audioCtx.createOscillator();
+        const o2 = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+
+        o1.type = "sine";
+        o2.type = "square";
+        o1.frequency.setValueAtTime(880, t0);
+        o2.frequency.setValueAtTime(1320, t0);
+
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(peak, t0 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+        o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
+        o1.start(t0); o2.start(t0);
+        o1.stop(t0 + dur + 0.01); o2.stop(t0 + dur + 0.01);
       }
+    } catch (e) {}
+  }
 
-      elCount.textContent = `${state.draws.length} / 90`;
+  // ====== Stato locale (append-only) ======
+  const state = {
+    draws: [],
+    drawnSet: new Set(),
+    events: [],
+    last: null,
+    roomStatus: "open",
+    sinceDrawIndex: 0,
+    sinceEventAt: ""
+  };
 
-      // storico (reverse)
-      elHist.innerHTML = "";
-      state.draws.slice().reverse().forEach(d => {
-        const c = document.createElement("div");
-        c.className = "chip";
-        c.textContent = d.n;
-        elHist.appendChild(c);
-      });
+  function setNet(msg) {
+    if (!elNet) return;
+    elNet.textContent = msg ? ("Connessione: " + msg) : "Connessione: OK";
+  }
 
-      // ordinati
-      elSorted.innerHTML = "";
-      [...state.drawnSet].sort((a, b) => a - b).forEach(n => {
-        const c = document.createElement("div");
-        c.className = "chip";
-        c.textContent = n;
-        elSorted.appendChild(c);
-      });
+  function fmtTime_(iso) {
+    try { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+    catch (e) { return ""; }
+  }
 
-      // premi verificati (prima volta per premio)
-      const hasNewWinShown = renderPrizes_();
-      if (hasNewWinShown) {
-        requestAnimationFrame(() => setTimeout(() => beep(), 0));
-      }
+  // ====== Premi: beep SOLO se appare una nuova vincita mostrata ======
+  let prizeBeepArmed = false;
+  let seenWinKeys = new Set();
 
+  function renderPrizes_() {
+    const prizeOrder = ["AMBO", "TERNO", "QUATERNA", "CINQUINA", "TOMBOLA"];
+    const ev = state.events.slice();
+
+    const firstDrawByPrize = new Map();
+    for (const e of ev) {
+      const pr = String(e.prize || "");
+      const di = Number(e.payload && e.payload.drawIndex);
+      if (!prizeOrder.includes(pr) || !Number.isFinite(di)) continue;
+      const cur = firstDrawByPrize.get(pr);
+      if (cur == null || di < cur) firstDrawByPrize.set(pr, di);
     }
 
-    function fmtTime_(iso) {
-      try { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
-      catch (e) { return ""; }
-    }
+    elEvents.innerHTML = "";
+    const any = prizeOrder.some(pr => firstDrawByPrize.has(pr));
+    if (!any) {
+      const empty = document.createElement("div");
+      empty.style.color = "rgba(0,0,0,.62)";
+      empty.style.fontWeight = "900";
+      empty.textContent = "Nessun premio ancora.";
+      elEvents.appendChild(empty);
 
-    function renderPrizes_() {
-      const prizeOrder = ["AMBO", "TERNO", "QUATERNA", "CINQUINA", "TOMBOLA"];
-      const ev = state.events.slice(); // solo PRIZE
-
-      // 1) prima drawIndex per premio
-      const firstDrawByPrize = new Map();
-      for (const e of ev) {
-        const pr = String(e.prize || "");
-        const di = Number(e.payload && e.payload.drawIndex);
-        if (!prizeOrder.includes(pr) || !Number.isFinite(di)) continue;
-        const cur = firstDrawByPrize.get(pr);
-        if (cur == null || di < cur) firstDrawByPrize.set(pr, di);
-      }
-
-      // 2) render DOM + raccolta "winKeys" mostrati
-      elEvents.innerHTML = "";
-      const any = prizeOrder.some(pr => firstDrawByPrize.has(pr));
-      if (!any) {
-        const empty = document.createElement("div");
-        empty.style.color = "rgba(0,0,0,.62)";
-        empty.style.fontWeight = "900";
-        empty.textContent = "Nessun premio ancora.";
-        elEvents.appendChild(empty);
-
-        // primo render: armo e basta
-        if (!prizeBeepArmed) {
-          prizeBeepArmed = true;
-          seenWinKeys = new Set();
-        }
-        return false;
-      }
-
-      const currentWinKeys = [];
-
-      for (const pr of prizeOrder) {
-        if (!firstDrawByPrize.has(pr)) continue;
-        const di = firstDrawByPrize.get(pr);
-
-        const winners = ev
-          .filter(e => String(e.prize) === pr && Number(e.payload && e.payload.drawIndex) === di)
-          .sort((a, b) => {
-            const an = String(a.name || a.playerId || "");
-            const bn = String(b.name || b.playerId || "");
-            if (an < bn) return -1;
-            if (an > bn) return 1;
-            return (Number(a.cardIndex) || 0) - (Number(b.cardIndex) || 0);
-          });
-
-        // key per ogni "vincita mostrata"
-        for (const w of winners) {
-          const pid = String(w.playerId || "");
-          const cix = Number(w.cardIndex);
-          currentWinKeys.push(`${pr}|${di}|${pid}|${cix}`);
-        }
-
-        // testo riga UI
-        const parts = [pr];
-        for (const w of winners) {
-          const name = String(w.name || w.playerId || "").trim() || "—";
-          const card = Number(w.cardIndex) + 1;
-          const win = Array.isArray(w.payload && w.payload.winNumbers) ? w.payload.winNumbers : [];
-          const nums = win.length ? win.join(", ") : "—";
-          parts.push(`${name} — Cartella ${card} — Numeri: ${nums}`);
-        }
-
-        const line = document.createElement("div");
-        line.className = "eventLine";
-        const t = winners.length ? fmtTime_(winners[0].at) : "";
-        line.textContent = parts.join(" — ") + (t ? `  •  ${t}` : "");
-        elEvents.appendChild(line);
-      }
-
-      // 3) BEEP: solo se compare una nuova "vincita mostrata"
       if (!prizeBeepArmed) {
         prizeBeepArmed = true;
-        for (const k of currentWinKeys) seenWinKeys.add(k);
-        return false; // primo render: niente beep
+        seenWinKeys = new Set();
       }
-
-      let hasNew = false;
-      for (const k of currentWinKeys) {
-        if (!seenWinKeys.has(k)) {
-          seenWinKeys.add(k);
-          hasNew = true;
-        }
-      }
-      return hasNew;
+      return false;
     }
 
+    const currentWinKeys = [];
 
-    // ====== Delta polling ======
-    let pollInFlight = false;
-    let drawInFlight = false;
-    let prizeBeepArmed = false;
-    let seenWinKeys = new Set();    // nuovo: memorizza le vincite già viste
+    for (const pr of prizeOrder) {
+      if (!firstDrawByPrize.has(pr)) continue;
+      const di = firstDrawByPrize.get(pr);
 
-
-    async function pollDelta() {
-      if (!roomId) return;
-      if (pollInFlight) return;
-      pollInFlight = true;
-
-      try {
-        setNet("Sync…");
-
-        const res = await jsonp("delta", {
-          roomId,
-          sinceDrawIndex: state.sinceDrawIndex,
-          sinceEventAt: state.sinceEventAt
+      const winners = ev
+        .filter(e => String(e.prize) === pr && Number(e.payload && e.payload.drawIndex) === di)
+        .sort((a, b) => {
+          const an = String(a.name || a.playerId || "");
+          const bn = String(b.name || b.playerId || "");
+          if (an < bn) return -1;
+          if (an > bn) return 1;
+          return (Number(a.cardIndex) || 0) - (Number(b.cardIndex) || 0);
         });
 
-        if (!res || !res.ok) {
-          setNet("Errore");
-          return;
-        }
-
-        // new draws
-        const newDraws = Array.isArray(res.newDraws) ? res.newDraws : [];
-        for (const d of newDraws) {
-          const n = Number(d.n);
-          const di = Number(d.drawIndex);
-          const at = String(d.at || "");
-          if (!Number.isFinite(n) || n < 1 || n > 90) continue;
-          if (!Number.isFinite(di) || di <= state.sinceDrawIndex) continue;
-
-          state.draws.push({ n, drawIndex: di, at });
-          state.drawnSet.add(n);
-          state.last = n;
-          state.sinceDrawIndex = Math.max(state.sinceDrawIndex, di);
-        }
-
-        // new events (PRIZE)
-        const newEvents = Array.isArray(res.newEvents) ? res.newEvents : [];
-        // let gotPrize = false;
-        for (const e of newEvents) {
-          const at = String(e.at || "");
-          if (at && at <= state.sinceEventAt) continue;
-
-          state.events.push(e);
-          if (at) state.sinceEventAt = at; // eventi già ordinati dal server
-          // gotPrize = true;
-        }
-
-        state.roomStatus = String(res.roomStatus || state.roomStatus || "");
-
-        // aggiorna UI (qui facciamo render completo: semplice e già veloce)
-        if (newDraws.length || newEvents.length) {
-          renderAllFromLocal_();
-        }
-
-        // disabilita estrazione se chiusa o finita
-        btnDraw.disabled = drawInFlight || state.sinceDrawIndex >= 90 || String(state.roomStatus).toLowerCase() === "closed";
-        setNet("OK");
-      } catch (e) {
-        setNet("Errore rete");
-      } finally {
-        pollInFlight = false;
+      for (const w of winners) {
+        const pid = String(w.playerId || "");
+        const cix = Number(w.cardIndex);
+        currentWinKeys.push(`${pr}|${di}|${pid}|${cix}`);
       }
+
+      const parts = [pr];
+      for (const w of winners) {
+        const name = String(w.name || w.playerId || "").trim() || "—";
+        const card = Number(w.cardIndex) + 1;
+        const win = Array.isArray(w.payload && w.payload.winNumbers) ? w.payload.winNumbers : [];
+        const nums = win.length ? win.join(", ") : "—";
+        parts.push(`${name} — Cartella ${card} — Numeri: ${nums}`);
+      }
+
+      const line = document.createElement("div");
+      line.className = "eventLine";
+      const t = winners.length ? fmtTime_(winners[0].at) : "";
+      line.textContent = parts.join(" — ") + (t ? `  •  ${t}` : "");
+      elEvents.appendChild(line);
     }
 
-    async function draw() {
-      if (!roomId) return;
-      if (drawInFlight) return;
-      if (state.sinceDrawIndex >= 90) return;
-      if (String(state.roomStatus).toLowerCase() === "closed") return;
-
-      drawInFlight = true;
-      btnDraw.disabled = true;
-
-      try {
-        // scegli numero non ancora uscito
-        let n;
-        do { n = Math.floor(Math.random() * 90) + 1; } while (state.drawnSet.has(n));
-
-        const res = await jsonp("draw", { roomId, n });
-        // se ok, il delta arriverà al prossimo poll (ma forziamo subito)
-        await pollDelta();
-      } finally {
-        drawInFlight = false;
-        btnDraw.disabled = state.sinceDrawIndex >= 90 || String(state.roomStatus).toLowerCase() === "closed";
-      }
+    if (!prizeBeepArmed) {
+      prizeBeepArmed = true;
+      for (const k of currentWinKeys) seenWinKeys.add(k);
+      return false;
     }
 
-    btnDraw.onclick = draw;
+    let hasNew = false;
+    for (const k of currentWinKeys) {
+      if (!seenWinKeys.has(k)) {
+        seenWinKeys.add(k);
+        hasNew = true;
+      }
+    }
+    return hasNew;
+  }
 
-    window.addEventListener("keydown", (e) => {
-      if (e.key === " ") { e.preventDefault(); draw(); }
+  function renderAllFromLocal_() {
+    // board classes reset
+    for (let n = 1; n <= 90; n++) {
+      if (cells[n]) cells[n].classList.remove("drawn", "last");
+    }
+    for (const n of state.drawnSet) {
+      if (cells[n]) cells[n].classList.add("drawn");
+    }
+
+    if (state.last && cells[state.last]) {
+      cells[state.last].classList.add("last");
+      elLast.textContent = state.last;
+      elSm.textContent = `💬 Smorfia: ${SMORFIA[state.last] || "—"}`;
+    } else {
+      elLast.textContent = "—";
+      elSm.textContent = "Pronto a iniziare ✨";
+    }
+
+    elCount.textContent = `${state.draws.length} / 90`;
+
+    // storico
+    elHist.innerHTML = "";
+    state.draws.slice().reverse().forEach(d => {
+      const c = document.createElement("div");
+      c.className = "chip";
+      c.textContent = d.n;
+      elHist.appendChild(c);
     });
 
-    // Snow
-    const snow = document.getElementById("snow");
-    const N = 26;
-    for (let i = 0; i < N; i++) {
-      const f = document.createElement("div");
-      const isGold = Math.random() < 0.20;
-      f.className = "flake" + (isGold ? " gold" : "");
-      const x = Math.random() * 100;
-      const size = 3 + Math.random() * 5;
-      const dur = 9 + Math.random() * 14;
-      const dx = (Math.random() * 2 - 1) * 140 + "px";
-      f.style.left = x + "vw";
-      f.style.width = size + "px";
-      f.style.height = size + "px";
-      f.style.animationDuration = dur + "s";
-      f.style.setProperty("--dx", dx);
-      f.style.opacity = (0.30 + Math.random() * 0.55).toFixed(2);
-      f.style.filter = `blur(${(Math.random() * 0.6).toFixed(2)}px)`;
-      f.style.animationDelay = (-Math.random() * dur) + "s";
-      snow.appendChild(f);
+    // ordinati
+    elSorted.innerHTML = "";
+    [...state.drawnSet].sort((a, b) => a - b).forEach(n => {
+      const c = document.createElement("div");
+      c.className = "chip";
+      c.textContent = n;
+      elSorted.appendChild(c);
+    });
+
+    // premi + beep se nuova vincita mostrata
+    const hasNewWinShown = renderPrizes_();
+    if (hasNewWinShown) requestAnimationFrame(() => setTimeout(() => beep(), 0));
+  }
+
+  // ====== Delta polling (Opzione 1: force dopo draw) ======
+  let pollInFlight = false;
+  let drawInFlight = false;
+  let pollQueuedForce = false;
+
+  async function pollDelta(force = false) {
+    if (!roomId) return;
+
+    if (pollInFlight) {
+      if (force) pollQueuedForce = true;
+      return;
     }
 
-    // BOOT
-    (async () => {
-      // primo giro: prende tutto
-      await pollDelta();
-      // loop
-      setInterval(() => { pollDelta(); }, POLL_MS);
-    })();
-  </script>
+    pollInFlight = true;
+
+    try {
+      setNet("Sync…");
+
+      const res = await jsonp("delta", {
+        roomId,
+        sinceDrawIndex: state.sinceDrawIndex,
+        sinceEventAt: state.sinceEventAt
+      });
+
+      if (!res || !res.ok) {
+        setNet("Errore");
+        return;
+      }
+
+      const newDraws = Array.isArray(res.newDraws) ? res.newDraws : [];
+      for (const d of newDraws) {
+        const n = Number(d.n);
+        const di = Number(d.drawIndex);
+        const at = String(d.at || "");
+        if (!Number.isFinite(n) || n < 1 || n > 90) continue;
+        if (!Number.isFinite(di) || di <= state.sinceDrawIndex) continue;
+
+        state.draws.push({ n, drawIndex: di, at });
+        state.drawnSet.add(n);
+        state.last = n;
+        state.sinceDrawIndex = Math.max(state.sinceDrawIndex, di);
+      }
+
+      const newEvents = Array.isArray(res.newEvents) ? res.newEvents : [];
+      for (const e of newEvents) {
+        const at = String(e.at || "");
+        if (at && at <= state.sinceEventAt) continue;
+
+        state.events.push(e);
+        if (at) state.sinceEventAt = at;
+      }
+
+      state.roomStatus = String(res.roomStatus || state.roomStatus || "");
+
+      if (newDraws.length || newEvents.length) renderAllFromLocal_();
+
+      btnDraw.disabled =
+        drawInFlight ||
+        state.sinceDrawIndex >= 90 ||
+        String(state.roomStatus).toLowerCase() === "closed";
+
+      setNet("OK");
+    } catch (e) {
+      setNet("Errore rete");
+    } finally {
+      pollInFlight = false;
+
+      if (pollQueuedForce) {
+        pollQueuedForce = false;
+        Promise.resolve().then(() => pollDelta(false));
+      }
+    }
+  }
+
+  async function draw() {
+    if (!roomId) return;
+    if (drawInFlight) return;
+    if (state.sinceDrawIndex >= 90) return;
+    if (String(state.roomStatus).toLowerCase() === "closed") return;
+
+    drawInFlight = true;
+    btnDraw.disabled = true;
+
+    try {
+      let n;
+      do { n = Math.floor(Math.random() * 90) + 1; } while (state.drawnSet.has(n));
+
+      await jsonp("draw", { roomId, n });
+
+      // ✅ Opzione 1: forzo subito un delta
+      await pollDelta(true);
+    } finally {
+      drawInFlight = false;
+      btnDraw.disabled =
+        state.sinceDrawIndex >= 90 ||
+        String(state.roomStatus).toLowerCase() === "closed";
+    }
+  }
+
+  btnDraw.onclick = draw;
+  window.addEventListener("keydown", (e) => {
+    if (e.key === " ") { e.preventDefault(); draw(); }
+  });
+
+  // ====== Snow ======
+  const snow = document.getElementById("snow");
+  const N = 26;
+  for (let i = 0; i < N; i++) {
+    const f = document.createElement("div");
+    const isGold = Math.random() < 0.20;
+    f.className = "flake" + (isGold ? " gold" : "");
+    const x = Math.random() * 100;
+    const size = 3 + Math.random() * 5;
+    const dur = 9 + Math.random() * 14;
+    const dx = (Math.random() * 2 - 1) * 140 + "px";
+    f.style.left = x + "vw";
+    f.style.width = size + "px";
+    f.style.height = size + "px";
+    f.style.animationDuration = dur + "s";
+    f.style.setProperty("--dx", dx);
+    f.style.opacity = (0.30 + Math.random() * 0.55).toFixed(2);
+    f.style.filter = `blur(${(Math.random() * 0.6).toFixed(2)}px)`;
+    f.style.animationDelay = (-Math.random() * dur) + "s";
+    snow.appendChild(f);
+  }
+
+  // ====== BOOT ======
+  (async () => {
+    await pollDelta(true); // primo giro: prende tutto
+    setInterval(() => pollDelta(false), POLL_MS);
+  })();
+</script>
+
 </body>
 
 </html>
