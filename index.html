@@ -1,4 +1,4 @@
-<!-- index.html (mobile-friendly + crea room + link diretti) -->
+<!-- index.html (mobile-friendly + crea room + link diretti + room dal Google Sheet "Rooms" (status=open) + NO localStorage) -->
 <!doctype html>
 <html lang="it">
 <head>
@@ -207,15 +207,46 @@
       });
     }
 
+    // ✅ Room corrente SOLO da backend (Rooms.status = "open")
+    let currentRoomId = null;
+
     function setRoom(roomId){
-      localStorage.setItem("tombola_roomId", roomId);
-      document.getElementById("roomBadge").textContent = roomId || "—";
-      document.getElementById("goTab").href = "./tabellone.html?room=" + encodeURIComponent(roomId);
-      document.getElementById("goCards").href = "./cartelle.html?room=" + encodeURIComponent(roomId);
+      currentRoomId = (roomId || "").trim().toUpperCase() || null;
+
+      document.getElementById("roomBadge").textContent = currentRoomId || "—";
+
+      const goTab = document.getElementById("goTab");
+      const goCards = document.getElementById("goCards");
+
+      if(currentRoomId){
+        goTab.href   = "./tabellone.html?room=" + encodeURIComponent(currentRoomId);
+        goCards.href = "./cartelle.html?room=" + encodeURIComponent(currentRoomId);
+      }else{
+        // nessuna room open: lasciamo link “base” senza room
+        goTab.href = "./tabellone.html";
+        goCards.href = "./cartelle.html";
+      }
     }
 
-    const roomLS = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
-    if(roomLS) setRoom(roomLS);
+    async function loadOpenRoom(){
+      // richiede Apps Script: action=getOpenRoom => {ok:true, roomId:<string|null>}
+      const res = await jsonp("getOpenRoom");
+      if(res && res.ok && res.roomId){
+        setRoom(res.roomId);
+      }else{
+        setRoom(null);
+      }
+    }
+
+    // ✅ BOOT: preleva room open
+    (async ()=>{
+      try{
+        await loadOpenRoom();
+      }catch(e){
+        setRoom(null);
+        alert("Errore nel recupero room dal server: " + String(e));
+      }
+    })();
 
     document.getElementById("newRoom").onclick = async ()=>{
       const res = await jsonp("createRoom");
@@ -228,15 +259,19 @@
     };
 
     document.getElementById("purge").onclick = async ()=>{
-      const keep = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
-      if(!keep){
-        alert("Nessuna room corrente in memoria. Crea una room prima.");
+      // se non ho una room corrente, riprovo a caricarla
+      if(!currentRoomId){
+        try{ await loadOpenRoom(); } catch(e){}
+      }
+      if(!currentRoomId){
+        alert("Nessuna room OPEN trovata. Crea una room prima.");
         return;
       }
-      if(!confirm("Elimino TUTTE le altre room dal Google Sheet, mantenendo solo " + keep + ". Confermi?")) return;
-      const res = await jsonp("purgeOtherRooms", { keepRoomId: keep });
+      if(!confirm("Elimino TUTTE le altre room dal Google Sheet, mantenendo solo " + currentRoomId + ". Confermi?")) return;
+
+      const res = await jsonp("purgeOtherRooms", { keepRoomId: currentRoomId });
       if(res && res.ok){
-        alert("Fatto ✅ (tenuta solo: " + keep + ")");
+        alert("Fatto ✅ (tenuta solo: " + currentRoomId + ")");
       }else{
         alert("Errore purge");
       }

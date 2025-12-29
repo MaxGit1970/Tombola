@@ -12,6 +12,12 @@
  *  DEBUG/LOG:
  *  - Aggiungi &debug=1 alle chiamate per includere _debug nella risposta
  *  - Log persistente su foglio Logs (configurabile)
+ *
+ *  ✅ NOVITÀ:
+ *  - action=getOpenRoom  => ritorna la room con status=open (la più recente)
+ *  - chiusura automatica room (status=closed) alla 90ª estrazione
+ *  - blocco draw se room già closed
+ *  - undo/reset riallineano lo status (open se <90, closed se >=90)
  */
 
 const CFG = {
@@ -23,11 +29,11 @@ const CFG = {
     MARKS:  "Marks",
     PRIZES: "Prizes",
     EVENTS: "Events",
-    LOGS:   "Logs",   // ✅ nuovo
+    LOGS:   "Logs",
   },
   LOGGING: {
     enabled: true,
-    persistToSheet: true,      // ✅ se vuoi log persistente
+    persistToSheet: true,
     persistAll: false,         // false => salva su sheet solo WARN/ERROR
     maxDebugLinesInResponse: 200
   },
@@ -68,6 +74,7 @@ function route_(e){
     switch(action){
       case "init":            out = {ok:true, init: init_()}; break;
       case "createRoom":      out = createRoom_(); break;
+      case "getOpenRoom":     out = getOpenRoom_(); break;          // ✅ NEW
       case "join":            out = join_(p); break;
       case "registerCards":   out = registerCards_(p); break;
       case "draw":            out = draw_(p); break;
@@ -80,7 +87,7 @@ function route_(e){
         out = {
           ok:false,
           error:"Unknown action",
-          hint:"Use ?action=init | createRoom | join | registerCards | draw | mark | state | undoDraw | resetGame | purgeOtherRooms"
+          hint:"Use ?action=init | createRoom | getOpenRoom | join | registerCards | draw | mark | state | undoDraw | resetGame | purgeOtherRooms"
         };
         dbg_("WARN","Unknown action", {action});
     }
@@ -88,7 +95,6 @@ function route_(e){
     const ms = Date.now() - t0;
     dbg_("INFO","route end", {ms, ok: !!(out && out.ok)});
 
-    // include debug payload only when debug=1
     if(debug){
       out._debug = buildDebugPayload_(ms);
     }
@@ -110,7 +116,6 @@ function route_(e){
     return respond_(out, p.callback);
 
   }finally{
-    // ultima scrittura log persistente (se abilitata)
     flushLogsToSheet_();
     REQ_ = null;
   }
@@ -156,9 +161,7 @@ function init_(){
   getOrCreateSheet_(CFG.SHEETS.MARKS,   ["roomId","playerId","cardIndex","n","marked","createdAt"]);
   getOrCreateSheet_(CFG.SHEETS.PRIZES,  ["roomId","playerId","cardIndex","prize","createdAt"]);
   getOrCreateSheet_(CFG.SHEETS.EVENTS,  ["roomId","createdAt","type","playerId","name","cardIndex","prize","payloadJson"]);
-
-  // ✅ Log sheet
-  getOrCreateSheet_(CFG.SHEETS.LOGS, ["ts","reqId","level","action","roomId","msg","json"]);
+  getOrCreateSheet_(CFG.SHEETS.LOGS,    ["ts","reqId","level","action","roomId","msg","json"]);
   return {sheets:Object.values(CFG.SHEETS)};
 }
 
@@ -207,7 +210,6 @@ function dbg_(level, msg, obj){
 
   REQ_.logs.push(entry);
 
-  // Logger (Execution log)
   try{
     Logger.log(JSON.stringify(entry));
   }catch(e){
@@ -236,7 +238,6 @@ function flushLogsToSheet_(){
     const sh = getOrCreateSheet_(CFG.SHEETS.LOGS);
     sh.getRange(sh.getLastRow()+1, 1, rows.length, rows[0].length).setValues(rows);
   }catch(e){
-    // se fallisce, almeno Logger
     Logger.log("LOG SHEET WRITE FAIL: " + String(e));
   }
 }
@@ -252,6 +253,58 @@ function buildDebugPayload_(ms){
     logCount: (REQ_.logs || []).length,
     logs: logs
   };
+}
+
+// -------------------- Rooms helpers (NEW) --------------------
+function getRoomStatus_(roomId){
+  init_();
+  const sh = getOrCreateSheet_(CFG.SHEETS.ROOMS);
+  const found = findRow_(sh, row => String(row[0]) === roomId);
+  return found ? String(found.row[2] || "") : "";
+}
+
+function setRoomStatus_(roomId, status){
+  init_();
+  const sh = getOrCreateSheet_(CFG.SHEETS.ROOMS);
+  const found = findRow_(sh, row => String(row[0]) === roomId);
+  if(!found) return false;
+  sh.getRange(found.rowIndex, 3).setValue(String(status));
+  return true;
+}
+
+function syncRoomStatusByDrawCount_(roomId){
+  const draws = getDraws_(roomId);
+  const should = (draws.length >= 90) ? "closed" : "open";
+  const cur = String(getRoomStatus_(roomId) || "").trim().toLowerCase();
+  const changed = (cur !== should);
+  if(changed){
+    setRoomStatus_(roomId, should);
+    dbg_("WARN", "room status sync", { roomId, from: cur, to: should, draws: draws.length });
+  }
+  return { ok:true, roomId, status: should, changed, draws: draws.length };
+}
+
+// ✅ action per index.html: prende la room open più recente
+function getOpenRoom_(){
+  init_();
+  const sh = getOrCreateSheet_(CFG.SHEETS.ROOMS);
+  const data = sh.getDataRange().getValues().slice(1);
+
+  let best = null;
+  for (const r of data){
+    const roomId = String(r[0] || "").trim().toUpperCase();
+    const createdAt = String(r[1] || "");
+    const status = String(r[2] || "").trim().toLowerCase();
+    if(!roomId) continue;
+    if(status !== "open") continue;
+
+    if(!best || createdAt > best.createdAt){
+      best = { roomId, createdAt };
+    }
+  }
+
+  dbg_("INFO","getOpenRoom", { found: !!best, roomId: best ? best.roomId : null });
+  return { ok:true, roomId: best ? best.roomId : null };
 }
 
 // -------------------- Data helpers --------------------
@@ -389,7 +442,6 @@ function registerCards_(p){
     init_();
     const shC = getOrCreateSheet_(CFG.SHEETS.CARDS);
 
-    // elimina vecchie cartelle di quel player
     const data = shC.getDataRange().getValues();
     let deleted = 0;
     for(let r=data.length; r>=2; r--){
@@ -400,7 +452,6 @@ function registerCards_(p){
       }
     }
 
-    // salva nuove
     cards.forEach((c)=>{
       const cardIndex = Number(c.cardIndex);
       const grid = c.grid;
@@ -431,6 +482,13 @@ function draw_(p){
   return lock_(()=>{
     init_();
 
+    // ✅ blocca estrazioni se room closed
+    const st = String(getRoomStatus_(roomId) || "").trim().toLowerCase();
+    if(st === "closed"){
+      dbg_("WARN","draw blocked: room closed", { roomId });
+      return { ok:false, error:"Room is closed", roomId };
+    }
+
     const shD = getOrCreateSheet_(CFG.SHEETS.DRAWS);
     const data = shD.getDataRange().getValues();
 
@@ -456,7 +514,14 @@ function draw_(p){
     const tab = autoTabelloneOnDraw_(roomId, n);
     dbg_("INFO","tabellone on draw", tab);
 
-    return {ok:true, roomId, n, drawIndex, tabellone: tab};
+    // ✅ se è la 90esima estrazione chiudo la room
+    let roomClosed = false;
+    if(drawIndex >= 90){
+      roomClosed = setRoomStatus_(roomId, "closed");
+      dbg_("WARN","room auto-closed", { roomId, drawIndex, roomClosed });
+    }
+
+    return {ok:true, roomId, n, drawIndex, tabellone: tab, roomClosed};
   });
 }
 
@@ -532,7 +597,8 @@ function getState_(p){
     draws,
     drawnNumbers: draws.map(d=>d.n),
     last,
-    events
+    events,
+    roomStatus: String(getRoomStatus_(roomId) || "")
   };
 }
 
@@ -568,8 +634,11 @@ function undoDraw_(p){
     clearRoomRows_(CFG.SHEETS.EVENTS, roomId);
     recomputeAllPrizesForRoom_(roomId);
 
-    dbg_("INFO","undo ok", {roomId, undoneN: best.n, undoneDrawIndex: best.drawIndex});
-    return {ok:true, roomId, undone:true, undoneN: best.n, undoneDrawIndex: best.drawIndex};
+    // ✅ riallinea status dopo undo
+    const sync = syncRoomStatusByDrawCount_(roomId);
+
+    dbg_("INFO","undo ok", {roomId, undoneN: best.n, undoneDrawIndex: best.drawIndex, sync});
+    return {ok:true, roomId, undone:true, undoneN: best.n, undoneDrawIndex: best.drawIndex, sync};
   });
 }
 
@@ -581,8 +650,12 @@ function resetGame_(p){
     init_();
     const targets = [CFG.SHEETS.DRAWS, CFG.SHEETS.MARKS, CFG.SHEETS.PRIZES, CFG.SHEETS.EVENTS];
     targets.forEach(name=> clearRoomRows_(name, roomId));
-    dbg_("WARN","resetGame", {roomId, cleared: targets});
-    return {ok:true, roomId, cleared:targets};
+
+    // ✅ dopo reset -> open
+    const changed = setRoomStatus_(roomId, "open");
+
+    dbg_("WARN","resetGame", {roomId, cleared: targets, roomStatusSetOpen: changed});
+    return {ok:true, roomId, cleared:targets, roomStatus:"open"};
   });
 }
 
@@ -798,7 +871,7 @@ function computeAndRecordPrizes_(roomId, playerId, name, cardIndex, grid, trigge
         triggerN: trig
       };
       recordPrize_(roomId, playerId, name, cardIndex, prize, payload);
-      newly.push({prize, winNumbers: payload.winNumbers, drawIndex: di, triggerN: trig});
+      newly.push({prize, winNumbers: wn, drawIndex: di, triggerN: trig});
     }
   }
 
