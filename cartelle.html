@@ -1,4 +1,13 @@
-<!-- cartelle.html (MOBILE-FIRST + Google Sheet backend + icona Utente) -->
+<!-- cartelle.html (NEW) — Mobile-first • Google Apps Script backend • 50 giocatori friendly
+  Backend atteso (azioni JSONP):
+  - action=join         {roomId, playerId, name} -> {ok, name}
+  - action=getCards     {roomId, playerId} -> {ok, cards:[{cardIndex, grid}]}
+  - action=registerCards{roomId, playerId, cardsJson} -> {ok}
+  - action=getMarks     {roomId, playerId} -> {ok, marks:[{cardIndex, numbers:[...] }]}
+  - action=mark         {roomId, playerId, cardIndex, n, marked} -> {ok, newly:[{prize, winNumbers, drawIndex}]?}
+  - action=delta        {roomId, sinceDrawRow, sincePrizeRow} -> {ok, roomStatus, roomEpoch?, lastDrawRow, lastPrizeRow, newDraws[], newPrizes[]}
+    (qui usiamo delta solo per estrazioni, per evidenziare i numeri già usciti e mostrare “Ultimo/Conteggio”)
+-->
 <!doctype html>
 <html lang="it">
 <head>
@@ -29,9 +38,7 @@
       --numVw: 6.2vw;
       --numMax: 26px;
     }
-
     *{ box-sizing:border-box; }
-
     body{
       margin:0;
       min-height: 100svh;
@@ -60,7 +67,7 @@
     .topbar.hidden{ transform: translateY(-120%); }
 
     .topbarInner{
-      width: min(640px, 100%);
+      width: min(860px, 100%);
       border: 1px solid rgba(255,255,255,.65);
       background: rgba(255,255,255,.88);
       border-radius: 999px;
@@ -68,11 +75,14 @@
       padding: 8px;
       display:flex;
       gap: 10px;
-      justify-content: center;
+      justify-content: space-between;
       align-items:center;
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
     }
+
+    .leftRow{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .rightRow{ display:flex; gap:10px; align-items:center; }
 
     .qtyBtn{
       border: 1px solid rgba(0,0,0,.12);
@@ -94,6 +104,19 @@
       border-color: rgba(0,0,0,.18);
     }
 
+    .chipInfo{
+      border: 1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.94);
+      color:#111;
+      border-radius: 999px;
+      padding: 10px 12px;
+      font-weight: 1000;
+      box-shadow: 0 10px 22px rgba(0,0,0,.10);
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    .chipInfo b{ font-size: 14px; }
+
     .userBtn{
       border: 1px solid rgba(0,0,0,.12);
       background: rgba(255,255,255,.94);
@@ -111,12 +134,13 @@
       align-items:center;
       justify-content:center;
       gap:6px;
+      max-width: 260px;
     }
     .userMini{
       font-size: 12px;
       color: rgba(0,0,0,.60);
       font-weight: 900;
-      max-width: 130px;
+      max-width: 160px;
       overflow:hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -128,7 +152,6 @@
       display:flex;
       justify-content:center;
     }
-
     .cards{
       width: min(980px, 100%);
       display:grid;
@@ -145,7 +168,6 @@
       overflow:hidden;
       box-shadow: var(--shadow);
     }
-
     .tTitle{
       margin: 0 0 3px;
       display:grid;
@@ -187,7 +209,6 @@
       letter-spacing: .2px;
       box-shadow: 0 8px 18px rgba(0,0,0,.07);
     }
-
     .cell.empty{
       background: rgba(255,255,255,.72);
       cursor:default;
@@ -195,12 +216,26 @@
       box-shadow:none;
     }
 
+    /* numero già estratto */
+    .cell.drawn{
+      background: linear-gradient(180deg, rgba(10,143,63,.26), rgba(10,143,63,.12));
+      border-color: rgba(10,143,63,.45);
+      box-shadow: 0 10px 22px rgba(10,143,63,.10);
+    }
+
+    /* marcato dal giocatore */
     .cell.marked{
       background: linear-gradient(180deg, rgba(215,0,27,.30), rgba(215,0,27,.14));
       border-color: rgba(215,0,27,.62);
       box-shadow: 0 12px 26px rgba(215,0,27,.14);
     }
-    .cell.marked::after{ content:""; }
+
+    /* se è sia estratto che marcato, enfatizzo */
+    .cell.drawn.marked{
+      box-shadow:
+        0 12px 26px rgba(215,0,27,.14),
+        0 10px 22px rgba(10,143,63,.10);
+    }
 
     .toast{
       position: fixed;
@@ -217,7 +252,7 @@
       opacity: 0;
       pointer-events:none;
       transition: opacity .18s ease;
-      max-width: min(640px, calc(100% - 24px));
+      max-width: min(760px, calc(100% - 24px));
       text-align:center;
     }
     .toast.show{ opacity: 1; }
@@ -243,9 +278,7 @@
     }
     .modal h3{ margin:0 0 10px; }
     .modal p{ margin:0 0 10px; color:rgba(0,0,0,.70); }
-    .row{
-      display:flex; gap:10px; align-items:center;
-    }
+    .row{ display:flex; gap:10px; align-items:center; }
     input{
       flex:1;
       border-radius: 14px;
@@ -265,10 +298,9 @@
       box-shadow: 0 14px 30px rgba(0,0,0,.14);
       min-width: 120px;
     }
-    .mBtn.primary{
-      background: linear-gradient(180deg, #ffe17b, #ffcc2e);
-    }
+    .mBtn.primary{ background: linear-gradient(180deg, #ffe17b, #ffcc2e); }
 
+    /* Snow */
     .snow{ position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:0; }
     .flake{
       position:absolute; top:-10px;
@@ -307,17 +339,32 @@
   </div>
 
   <div class="topbar" id="topbar">
-    <div class="topbarInner" aria-label="Numero cartelle">
-      <div id="qtyRow" style="display:flex;gap:10px;align-items:center">
-        <button class="qtyBtn" data-n="1">1</button>
-        <button class="qtyBtn" data-n="2">2</button>
-        <button class="qtyBtn" data-n="3">3</button>
-        <button class="qtyBtn active" data-n="4">4</button>
+    <div class="topbarInner">
+      <div class="leftRow" aria-label="Numero cartelle">
+        <div id="qtyRow" style="display:flex;gap:10px;align-items:center">
+          <button class="qtyBtn" data-n="1">1</button>
+          <button class="qtyBtn" data-n="2">2</button>
+          <button class="qtyBtn" data-n="3">3</button>
+          <button class="qtyBtn active" data-n="4">4</button>
+        </div>
+
+        <div class="chipInfo" title="Room">
+          Room <b id="roomBadge">—</b>
+        </div>
       </div>
 
-      <button class="userBtn" id="userBtn" title="Imposta nome">
-        👤 <span class="userMini" id="userMini">Anonimo</span>
-      </button>
+      <div class="rightRow">
+        <div class="chipInfo" title="Ultimo estratto">
+          Ultimo <b id="lastDraw">—</b>
+        </div>
+        <div class="chipInfo" title="Conteggio estratti">
+          <b id="countDraw">0</b>/90
+        </div>
+
+        <button class="userBtn" id="userBtn" title="Imposta nome">
+          👤 <span class="userMini" id="userMini">Anonimo</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -327,7 +374,8 @@
 
   <script>
     // ====== CONFIG ======
-    const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
+    const API_BASE = "https://script.google.com/macros/s/AK_REPLACE_ME/exec";
+    const POLL_MS = 2500; // 50 giocatori: più leggero di 1s
 
     function getRoomId(){
       const url = new URL(location.href);
@@ -338,15 +386,15 @@
         room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
       }
       if(room) localStorage.setItem("tombola_roomId", room);
-      return room;
+      return room || null;
     }
 
-    function jsonp(action, params={}){
+    function jsonp(action, params={}, timeoutMs=12000){
       return new Promise((resolve, reject)=>{
         const cb = "cb_" + Math.random().toString(36).slice(2);
         const qs = new URLSearchParams({ action, ...params, callback: cb, nocache: Date.now() }).toString();
         const s = document.createElement("script");
-        const t = setTimeout(()=>{ cleanup(); reject(new Error("Timeout")); }, 12000);
+        const t = setTimeout(()=>{ cleanup(); reject(new Error("Timeout")); }, timeoutMs);
 
         function cleanup(){
           clearTimeout(t);
@@ -355,21 +403,23 @@
         }
 
         window[cb] = (data)=>{ cleanup(); resolve(data); };
-        s.src = API_BASE + "?" + qs;
         s.onerror = ()=>{ cleanup(); reject(new Error("Network error")); };
+        s.src = API_BASE + "?" + qs;
         document.body.appendChild(s);
       });
     }
 
+    // ====== TOAST ======
     const toast = document.getElementById("toast");
     let toastT = null;
     function showToast(msg){
       toast.textContent = msg;
       toast.classList.add("show");
       clearTimeout(toastT);
-      toastT = setTimeout(()=>toast.classList.remove("show"), 2000);
+      toastT = setTimeout(()=>toast.classList.remove("show"), 2200);
     }
 
+    // ====== MODAL NOME ======
     const overlay = document.getElementById("overlay");
     const userBtn = document.getElementById("userBtn");
     const userMini = document.getElementById("userMini");
@@ -386,7 +436,9 @@
     overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closeModal(); });
     userBtn.onclick = openModal;
 
+    // ====== ROOM / PLAYER ======
     const roomId = getRoomId();
+    document.getElementById("roomBadge").textContent = roomId || "—";
 
     function pidKey(){ return "tombola_playerId_" + roomId; }
     function nameKey(){ return "tombola_playerName_" + roomId; }
@@ -399,10 +451,7 @@
       }
       return pid;
     }
-
-    function getPlayerName(){
-      return (localStorage.getItem(nameKey()) || "").trim();
-    }
+    function getPlayerName(){ return (localStorage.getItem(nameKey()) || "").trim(); }
 
     async function join(){
       const playerId = getPlayerId();
@@ -424,14 +473,15 @@
       userMini.textContent = (val || "Anonimo");
       closeModal();
       try{
-        await jsonp("join", { roomId, playerId: getPlayerId(), name: val });
-        showToast("Nome aggiornato ✅");
+        const res = await jsonp("join", { roomId, playerId: getPlayerId(), name: val });
+        if(res && res.ok) showToast("Nome aggiornato ✅");
+        else showToast("Errore nome ❌");
       }catch(e){
-        showToast("Errore nome ❌");
+        showToast("Errore rete ❌");
       }
     };
 
-    // Snow
+    // ====== SNOW ======
     const snow = document.getElementById('snow');
     const N = 28;
     for(let i=0;i<N;i++){
@@ -453,6 +503,7 @@
       snow.appendChild(f);
     }
 
+    // ====== GENERATORE CARTELLA ======
     function rng(){ return Math.random(); }
     function pickUnique(arr, k){
       const a = arr.slice();
@@ -519,69 +570,13 @@
       return makeCard();
     }
 
-    function renderCard(container, idx, grid){
-      const card = document.createElement('div');
-      card.className = "tcard";
-      card.innerHTML = `
-        <h3 class="tTitle">
-          <span class="tSpacer"></span>
-          <span class="tTitleText">Cartella ${idx+1}</span>
-          <span class="tSanta">🎄</span>
-        </h3>
-      `;
-
-      const g = document.createElement('div');
-      g.className = 'grid9';
-
-      grid.flat().forEach((val)=>{
-        const c = document.createElement('div');
-        c.className = 'cell' + (val==null ? ' empty' : '');
-        c.textContent = val==null ? '' : val;
-
-        if(val!=null){
-          c.addEventListener('click', async ()=>{
-            const willMark = !c.classList.contains("marked");
-            c.classList.toggle('marked');
-
-            const res = await jsonp("mark", {
-              roomId,
-              playerId: getPlayerId(),
-              cardIndex: idx,
-              n: Number(val),
-              marked: willMark ? 1 : 0
-            });
-
-            if(!res || !res.ok){
-              c.classList.toggle('marked');
-              showToast(res && res.error ? res.error : "Marcatura rifiutata");
-              return;
-            }
-
-            // ✅ toast con numeri vincenti (se presenti)
-            if(Array.isArray(res.newly) && res.newly.length){
-              const msg = res.newly.map(x=>{
-                const wn = Array.isArray(x.winNumbers) ? x.winNumbers : [];
-                return wn.length ? `${x.prize} (${wn.join(", ")})` : x.prize;
-              }).join(" • ");
-              showToast("🎉 " + msg);
-            }
-          }, {passive:true});
-        }
-
-        g.appendChild(c);
-      });
-
-      card.appendChild(g);
-      container.appendChild(card);
-    }
-
+    // ====== UI / SIZING ======
     const root = document.documentElement;
     const cardsWrap = document.getElementById('cards');
     const topbar = document.getElementById('topbar');
 
     function applyMaxSizingForN(n){
       const barH = topbar.getBoundingClientRect().height || 64;
-
       const vh = window.innerHeight;
       const vw = Math.min(window.innerWidth, cardsWrap.getBoundingClientRect().width || window.innerWidth);
 
@@ -624,60 +619,323 @@
       root.style.setProperty('--numVw', '6.2vw');
     }
 
-    let selectedN = 4;
-    let currentGrids = [];
+    // ====== STATE (draws + marks + mapping veloce numero->celle) ======
+    const state = {
+      roomEpoch: null,
+      roomStatus: "open",
+      sinceDrawRow: 1,
+      sincePrizeRow: 1,
 
-    async function registerAllCards(){
-      const payload = currentGrids.map((grid, i)=>({ cardIndex: i, grid }));
+      drawnSet: new Set(),
+      lastDrawN: null,
+
+      // marks per cardIndex
+      markSets: new Map(), // cardIndex -> Set(numbers)
+
+      // mapping numero -> array di HTMLElement (celle che contengono quel numero)
+      numCells: new Map(), // n -> [cellEl...]
+    };
+
+    const elLastDraw = document.getElementById("lastDraw");
+    const elCountDraw = document.getElementById("countDraw");
+
+    function updateTopInfo_(){
+      elLastDraw.textContent = state.lastDrawN ? String(state.lastDrawN) : "—";
+      elCountDraw.textContent = String(state.drawnSet.size);
+    }
+
+    function bindNumberCell_(n, el){
+      if(!state.numCells.has(n)) state.numCells.set(n, []);
+      state.numCells.get(n).push(el);
+      // se già estratto, applico subito classe
+      if(state.drawnSet.has(n)) el.classList.add("drawn");
+    }
+
+    function applyDraw_(n){
+      n = Number(n);
+      if(!Number.isFinite(n) || n<1 || n>90) return;
+      if(state.drawnSet.has(n)) return;
+      state.drawnSet.add(n);
+      state.lastDrawN = n;
+
+      const list = state.numCells.get(n);
+      if(list && list.length){
+        for(const el of list) el.classList.add("drawn");
+      }
+      updateTopInfo_();
+    }
+
+    function applyMarksToUI_(){
+      for(const [cardIndex, set] of state.markSets.entries()){
+        for(const n of set){
+          const list = state.numCells.get(n);
+          if(!list) continue;
+          for(const el of list){
+            if(Number(el.dataset.cardIndex) === Number(cardIndex) && Number(el.dataset.n) === Number(n)){
+              el.classList.add("marked");
+            }
+          }
+        }
+      }
+    }
+
+    // ====== RENDER CARDS ======
+    function renderCard(container, idx, grid){
+      const card = document.createElement('div');
+      card.className = "tcard";
+      card.innerHTML = `
+        <h3 class="tTitle">
+          <span class="tSpacer"></span>
+          <span class="tTitleText">Cartella ${idx+1}</span>
+          <span class="tSanta">🎄</span>
+        </h3>
+      `;
+
+      const g = document.createElement('div');
+      g.className = 'grid9';
+
+      const inFlight = new Set(); // evita doppio tap mentre la richiesta mark è in corso
+
+      grid.flat().forEach((val)=>{
+        const c = document.createElement('div');
+        const isEmpty = (val == null);
+        c.className = 'cell' + (isEmpty ? ' empty' : '');
+        c.textContent = isEmpty ? '' : String(val);
+
+        if(!isEmpty){
+          c.dataset.n = String(val);
+          c.dataset.cardIndex = String(idx);
+
+          bindNumberCell_(Number(val), c);
+
+          c.addEventListener('click', async ()=>{
+            const key = `${idx}|${val}`;
+            if(inFlight.has(key)) return;
+
+            const markSet = state.markSets.get(idx) || new Set();
+            const currentlyMarked = markSet.has(Number(val));
+            const willMark = !currentlyMarked;
+
+            // optimistic UI
+            if(willMark){
+              c.classList.add("marked");
+              markSet.add(Number(val));
+            }else{
+              c.classList.remove("marked");
+              markSet.delete(Number(val));
+            }
+            state.markSets.set(idx, markSet);
+
+            inFlight.add(key);
+            try{
+              const res = await jsonp("mark", {
+                roomId,
+                playerId: getPlayerId(),
+                cardIndex: idx,
+                n: Number(val),
+                marked: willMark ? 1 : 0
+              });
+
+              if(!res || !res.ok){
+                // revert
+                if(willMark){
+                  c.classList.remove("marked");
+                  markSet.delete(Number(val));
+                }else{
+                  c.classList.add("marked");
+                  markSet.add(Number(val));
+                }
+                state.markSets.set(idx, markSet);
+                showToast(res && res.error ? res.error : "Marcatura rifiutata");
+                return;
+              }
+
+              // toast premi (se presenti)
+              if(Array.isArray(res.newly) && res.newly.length){
+                const msg = res.newly.map(x=>{
+                  const wn = Array.isArray(x.winNumbers) ? x.winNumbers : [];
+                  return wn.length ? `${x.prize} (${wn.join(", ")})` : x.prize;
+                }).join(" • ");
+                showToast("🎉 " + msg);
+              }
+            }catch(e){
+              // revert su errore rete
+              if(willMark){
+                c.classList.remove("marked");
+                markSet.delete(Number(val));
+              }else{
+                c.classList.add("marked");
+                markSet.add(Number(val));
+              }
+              state.markSets.set(idx, markSet);
+              showToast("Errore rete ❌");
+            }finally{
+              inFlight.delete(key);
+            }
+          }, {passive:true});
+        }
+
+        g.appendChild(c);
+      });
+
+      card.appendChild(g);
+      container.appendChild(card);
+    }
+
+    // ====== BACKEND: CARDS + MARKS ======
+    async function getCards_(){
+      const res = await jsonp("getCards", { roomId, playerId: getPlayerId() });
+      if(res && res.ok && Array.isArray(res.cards)) return res.cards;
+      return [];
+    }
+
+    async function registerCards_(cards){
+      const payload = cards.map((grid, i)=>({ cardIndex: i, grid }));
       const res = await jsonp("registerCards", {
         roomId,
         playerId: getPlayerId(),
         cardsJson: JSON.stringify(payload)
       });
-      if(!res || !res.ok){
-        showToast("Errore salvataggio cartelle");
+      if(!res || !res.ok) throw new Error("registerCards failed");
+    }
+
+    async function getMarks_(){
+      const res = await jsonp("getMarks", { roomId, playerId: getPlayerId() });
+      if(res && res.ok && Array.isArray(res.marks)) return res.marks;
+      return [];
+    }
+
+    // ====== DELTA POLL (solo estrazioni per UI) ======
+    let pollInFlight = false;
+
+    async function pollDelta(force=false){
+      if(!roomId) return;
+      if(pollInFlight) return;
+      pollInFlight = true;
+      try{
+        const res = await jsonp("delta", {
+          roomId,
+          sinceDrawRow: state.sinceDrawRow,
+          sincePrizeRow: state.sincePrizeRow
+        }, 12000);
+
+        if(!res || !res.ok) return;
+
+        // epoch reset (opzionale): se cambia, ricarico
+        if(res.roomEpoch != null){
+          const ep = String(res.roomEpoch);
+          if(state.roomEpoch != null && state.roomEpoch !== ep) location.reload();
+          state.roomEpoch = ep;
+        }
+
+        if(Number.isFinite(Number(res.lastDrawRow))) state.sinceDrawRow = Number(res.lastDrawRow);
+        if(Number.isFinite(Number(res.lastPrizeRow))) state.sincePrizeRow = Number(res.lastPrizeRow);
+
+        state.roomStatus = String(res.roomStatus || state.roomStatus || "open").toLowerCase();
+
+        const nd = Array.isArray(res.newDraws) ? res.newDraws : [];
+        if(force && !nd.length && state.drawnSet.size === 0){
+          // se force iniziale ma backend non manda nulla, ok: niente estrazioni
+        }
+        for(const d of nd){
+          applyDraw_(d.n);
+        }
+      }catch(e){
+        // silenzioso: non vogliamo stressare 50 client con alert
+      }finally{
+        pollInFlight = false;
       }
     }
 
-    async function generate(){
+    // ====== GENERA / CARICA ======
+    let selectedN = 4;
+    let currentGrids = []; // array di grid 3x9
+
+    async function buildUIFromGrids_(grids){
+      cardsWrap.innerHTML = "";
+      state.numCells.clear();
+      state.markSets.clear();
+
+      for(let i=0;i<grids.length;i++){
+        renderCard(cardsWrap, i, grids[i]);
+      }
+
+      // marks da backend
+      try{
+        const marks = await getMarks_(); // [{cardIndex, numbers:[...]}]
+        for(const m of marks){
+          const ci = Number(m.cardIndex);
+          const nums = Array.isArray(m.numbers) ? m.numbers : [];
+          const set = new Set(nums.map(Number).filter(x=>Number.isFinite(x)));
+          state.markSets.set(ci, set);
+        }
+        applyMarksToUI_();
+      }catch(e){}
+
+      updateTopInfo_();
+    }
+
+    async function generateNewCards_(){
       applyMaxSizingForN(selectedN);
 
-      cardsWrap.innerHTML = "";
-      currentGrids = [];
-      for(let i=0;i<selectedN;i++){
-        const g = makeCard();
-        currentGrids.push(g);
-        renderCard(cardsWrap, i, g);
-      }
+      const grids = [];
+      for(let i=0;i<selectedN;i++) grids.push(makeCard());
+      currentGrids = grids;
 
-      try{
-        await join();
-        await registerAllCards();
-      }catch(e){
-        showToast("Backend non raggiungibile");
-      }
+      await registerCards_(grids);
+      await buildUIFromGrids_(grids);
+      showToast("Cartelle generate ✅");
     }
 
+    async function loadOrCreate_(){
+      applyMaxSizingForN(selectedN);
+
+      // prova a caricare dal backend
+      const existing = await getCards_(); // [{cardIndex, grid}]
+      if(existing && existing.length){
+        const grids = existing
+          .slice()
+          .sort((a,b)=>Number(a.cardIndex)-Number(b.cardIndex))
+          .map(x=>x.grid);
+        currentGrids = grids;
+        selectedN = grids.length || selectedN;
+        await buildUIFromGrids_(grids);
+        return;
+      }
+
+      // nessuna cartella: ne creo di nuove
+      await generateNewCards_();
+    }
+
+    // ====== QTY BUTTONS ======
     const qtyRow = document.getElementById('qtyRow');
-    qtyRow.addEventListener('click', (e)=>{
+    qtyRow.addEventListener('click', async (e)=>{
       const btn = e.target.closest('button[data-n]');
       if(!btn) return;
 
-      selectedN = parseInt(btn.dataset.n, 10);
+      const n = parseInt(btn.dataset.n, 10);
+      if(!Number.isFinite(n) || n<1 || n>4) return;
+
+      // se cambia quantità, rigenero e rimpiazzo (nuovo progetto, ok)
+      selectedN = n;
+
       qtyRow.querySelectorAll('.qtyBtn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
 
-      generate();
+      try{
+        await generateNewCards_();
+      }catch(e){
+        showToast("Errore salvataggio cartelle ❌");
+      }
     });
 
+    // ====== TOPBAR HIDE/SHOW ======
     let lastY = window.scrollY;
     let barHidden = false;
-
     function setBarHidden(hidden){
       barHidden = hidden;
       topbar.classList.toggle('hidden', hidden);
     }
-
     window.addEventListener('scroll', ()=>{
       const y = window.scrollY;
       const dy = y - lastY;
@@ -698,13 +956,35 @@
       applyMaxSizingForN(selectedN);
     }, {passive:true});
 
+    // ====== BOOT ======
     (async ()=>{
+      if(!roomId){
+        showToast("Room mancante ❌");
+        return;
+      }
+
       try{
         await join();
         userMini.textContent = (localStorage.getItem(nameKey()) || "Anonimo");
-      }catch(e){}
+      }catch(e){
+        showToast("Backend non raggiungibile ❌");
+      }
+
+      // UI iniziale
       applyMaxSizingForN(selectedN);
-      generate();
+
+      try{
+        await loadOrCreate_();
+      }catch(e){
+        showToast("Errore caricamento cartelle ❌");
+      }
+
+      // primo delta: prende tutto (estratti finora)
+      await pollDelta(true);
+      updateTopInfo_();
+
+      // poll continuo (leggero)
+      setInterval(() => pollDelta(false), POLL_MS);
     })();
   </script>
 </body>

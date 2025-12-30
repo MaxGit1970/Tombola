@@ -1,7 +1,10 @@
-<!-- tabellone.html (MOBILE-FIRST + Google Sheet backend + TABELLONE delta polling append-only) -->
+<!-- tabellone.html (NEW) — Mobile-first • Google Apps Script backend • Delta polling append-only
+  Backend atteso (azioni JSONP):
+  - action=delta   {roomId, sinceDrawRow, sincePrizeRow} -> {ok, roomStatus, roomEpoch?, lastDrawRow, lastPrizeRow, newDraws[], newPrizes[]}
+  - action=draw    {roomId} -> {ok, n, drawIndex, at, roomStatus?}  (backend sceglie n evitando duplicati)
+-->
 <!doctype html>
 <html lang="it">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
@@ -20,11 +23,7 @@
       --shadow: 0 18px 42px rgba(0, 0, 0, .18);
       --r: 18px;
     }
-
-    * {
-      box-sizing: border-box
-    }
-
+    * { box-sizing: border-box }
     body {
       margin: 0;
       min-height: 100svh;
@@ -37,55 +36,24 @@
         linear-gradient(135deg, var(--bgA), var(--bgB));
       overflow-x: hidden;
     }
-
-    header {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 12px 10px
-    }
-
-    .top {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between
-    }
-
-    .brand {
-      display: flex;
-      gap: 10px;
-      align-items: center
-    }
-
-    .brand b {
-      font-size: 17px
-    }
-
+    header { max-width: 820px; margin: 0 auto; padding: 12px 10px }
+    .top { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between }
+    .brand { display: flex; gap: 10px; align-items: center }
+    .brand b { font-size: 17px }
     .pill {
-      border: 1px solid rgba(0, 0, 0, .12);
-      background: rgba(255, 255, 255, .82);
+      border: 1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.82);
       padding: 7px 10px;
       border-radius: 999px;
-      color: rgba(0, 0, 0, .70);
+      color: rgba(0,0,0,.70);
       font-size: 13px;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       gap: 8px;
     }
-
-    .roomBadge {
-      font-weight: 1000;
-      letter-spacing: .3px
-    }
-
-    main {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 0 10px 56px
-    }
-
+    .roomBadge { font-weight: 1000; letter-spacing: .3px }
+    main { max-width: 820px; margin: 0 auto; padding: 0 10px 56px }
     .card {
       border: 1px solid var(--stroke);
       background: var(--card);
@@ -94,7 +62,6 @@
       padding: 12px;
       margin-bottom: 10px;
     }
-
     .big {
       display: flex;
       align-items: baseline;
@@ -102,193 +69,99 @@
       gap: 12px;
       padding: 9px 10px;
       border-radius: 16px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .72));
-      border: 1px solid rgba(0, 0, 0, .10);
+      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.72));
+      border: 1px solid rgba(0,0,0,.10);
       margin-bottom: 10px;
     }
-
-    .last {
-      font-size: 56px;
-      font-weight: 900;
-      letter-spacing: -1px;
-      line-height: 1
-    }
-
-    .label {
-      color: rgba(0, 0, 0, .62);
-      font-size: 12px
-    }
-
-    .smorfia {
-      margin-top: 4px;
-      font-size: 15px
-    }
-
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center
-    }
-
+    .last { font-size: 56px; font-weight: 900; letter-spacing: -1px; line-height: 1 }
+    .label { color: rgba(0,0,0,.62); font-size: 12px }
+    .smorfia { margin-top: 4px; font-size: 15px }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center }
     button {
       cursor: pointer;
-      border: 1px solid rgba(0, 0, 0, .12);
+      border: 1px solid rgba(0,0,0,.12);
       border-radius: 14px;
       padding: 11px 12px;
       font-weight: 900;
       letter-spacing: .2px;
-      background: rgba(255, 255, 255, .85);
+      background: rgba(255,255,255,.85);
       color: #111;
-      box-shadow: 0 12px 26px rgba(0, 0, 0, .15);
+      box-shadow: 0 12px 26px rgba(0,0,0,.15);
       min-height: 44px;
       flex: 1 1 140px;
     }
-
-    button.primary {
-      background: linear-gradient(180deg, #ff6b7c, #ff1e3a);
-    }
-
-    button:disabled {
-      opacity: .55;
-      cursor: not-allowed
-    }
-
-    .hint {
-      color: rgba(0, 0, 0, .62);
-      font-size: 12px;
-      margin-top: 8px;
-      line-height: 1.35;
-      text-align: center
-    }
-
-    .boardWrap {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
-    .boardHalf {
-      flex: 1;
-      display: grid;
-      grid-template-columns: repeat(5, minmax(22px, 1fr));
-      gap: 3px;
-    }
-
+    button.primary { background: linear-gradient(180deg, #ff6b7c, #ff1e3a); }
+    button:disabled { opacity: .55; cursor: not-allowed }
+    .hint { color: rgba(0,0,0,.62); font-size: 12px; margin-top: 8px; line-height: 1.35; text-align: center }
+    .boardWrap { display: flex; gap: 10px; align-items: flex-start; }
+    .boardHalf { flex: 1; display: grid; grid-template-columns: repeat(5, minmax(22px, 1fr)); gap: 3px; }
     .cell {
       aspect-ratio: 1/1;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 11px;
-      border: 1px solid rgba(0, 0, 0, .10);
-      background: rgba(255, 255, 255, .90);
+      border: 1px solid rgba(0,0,0,.10);
+      background: rgba(255,255,255,.90);
       font-weight: 1000;
       user-select: none;
       font-size: clamp(16px, 5.1vw, 24px);
       line-height: 1;
       position: relative;
     }
-
     .cell.drawn {
       background: linear-gradient(180deg, rgba(10, 143, 63, .30), rgba(10, 143, 63, .14));
       border-color: rgba(10, 143, 63, .55);
       box-shadow: 0 10px 20px rgba(10, 143, 63, .14);
     }
-
     .cell.last::after {
       content: "✨";
       position: absolute;
       top: -8px;
       right: -8px;
       font-size: 16px;
-      filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .25));
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,.25));
     }
-
-    .rowBottom {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: 1fr;
-      margin-top: 10px;
-    }
-
-    .list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      max-height: 190px;
-      overflow: auto;
-      padding-right: 6px;
-    }
-
+    .rowBottom { display: grid; gap: 10px; grid-template-columns: 1fr; margin-top: 10px; }
+    .list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 190px; overflow: auto; padding-right: 6px; }
     .chip {
-      border: 1px solid rgba(0, 0, 0, .12);
-      background: rgba(255, 255, 255, .85);
+      border: 1px solid rgba(0,0,0,.12);
+      background: rgba(255,255,255,.85);
       padding: 6px 10px;
       border-radius: 999px;
       font-weight: 900;
       color: #111
     }
-
-    .eventList {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 260px;
-      overflow: auto;
-    }
-
+    .eventList { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow: auto; }
     .eventLine {
-      border: 1px solid rgba(0, 0, 0, .10);
-      background: rgba(255, 255, 255, .88);
+      border: 1px solid rgba(0,0,0,.10);
+      background: rgba(255,255,255,.88);
       border-radius: 14px;
       padding: 10px 12px;
-      box-shadow: 0 10px 22px rgba(0, 0, 0, .08);
+      box-shadow: 0 10px 22px rgba(0,0,0,.08);
       white-space: nowrap;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       font-weight: 1000;
       font-size: 13px;
     }
-
     /* Snow */
-    .snow {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden
-    }
-
-    .flake {
-      position: absolute;
-      top: -10px;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .95);
-      box-shadow: 0 0 14px rgba(255, 255, 255, .45);
-      opacity: .85;
+    .snow { position: fixed; inset: 0; pointer-events: none; overflow: hidden }
+    .flake{
+      position:absolute; top:-10px;
+      width:6px; height:6px; border-radius:50%;
+      background: rgba(255,255,255,.95);
+      box-shadow: 0 0 14px rgba(255,255,255,.45);
+      opacity:.85;
       animation: fall linear infinite;
     }
-
-    .flake.gold {
-      background: rgba(255, 204, 46, .95);
-      box-shadow: 0 0 14px rgba(255, 204, 46, .45);
-      opacity: .8;
+    .flake.gold{
+      background: rgba(255,204,46,.95);
+      box-shadow: 0 0 14px rgba(255,204,46,.45);
+      opacity:.8;
     }
-
-    @keyframes fall {
-      to {
-        transform: translate3d(var(--dx), 110svh, 0);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .flake {
-        animation: none;
-        opacity: .30;
-      }
-    }
+    @keyframes fall{ to{ transform: translate3d(var(--dx), 110svh, 0); } }
+    @media (prefers-reduced-motion: reduce){ .flake{ animation:none; opacity:.30; } }
   </style>
 </head>
 
@@ -332,7 +205,7 @@
       </div>
 
       <div class="hint">
-        Il tabellone si aggiorna in “delta”: scarica solo le nuove estrazioni e i nuovi premi.
+        Il tabellone scarica solo il “delta” (nuove estrazioni e nuovi premi).
       </div>
     </section>
 
@@ -365,432 +238,420 @@
   </main>
 
   <script>
-  // ====== CONFIG ======
-  const API_BASE = "https://script.google.com/macros/s/AKfycbyM0N-kMkCqD54L-LRCdjALMBry5i1wsdKlpWI8AezXIdQoS53Jp6K6Jguv9MgEbigA/exec";
-  const POLL_MS = 1000;
+    // ====== CONFIG ======
+    const API_BASE = "https://script.google.com/macros/s/AK_REPLACE_ME/exec";
+    const POLL_MS = 1000;
 
-  function getRoomId() {
-    const url = new URL(location.href);
-    const q = (url.searchParams.get("room") || "").trim().toUpperCase();
-    const ls = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
-    let room = q || ls;
-    if (!room) room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
-    if (room) localStorage.setItem("tombola_roomId", room);
-    return room;
-  }
-
-  // JSONP helper
-  function jsonp(action, params = {}) {
-    return new Promise((resolve, reject) => {
-      const cb = "cb_" + Math.random().toString(36).slice(2);
-      const full = { action, ...params, callback: cb, nocache: Date.now() };
-      const qs = new URLSearchParams(full).toString();
-      const url = API_BASE + "?" + qs;
-
-      const s = document.createElement("script");
-      const timer = setTimeout(() => { cleanup(); reject(new Error("Timeout")); }, 15000);
-
-      function cleanup() {
-        clearTimeout(timer);
-        if (window[cb]) delete window[cb];
-        if (s && s.parentNode) s.parentNode.removeChild(s);
-      }
-
-      window[cb] = (data) => { cleanup(); resolve(data); };
-      s.onerror = () => { cleanup(); reject(new Error("Network error")); };
-
-      s.src = url;
-      document.body.appendChild(s);
-    });
-  }
-
-  // ====== UI refs ======
-  const roomId = getRoomId();
-  document.getElementById("roomBadge").textContent = roomId || "—";
-
-  const elLast = document.getElementById("last");
-  const elSm = document.getElementById("smorfia");
-  const elCount = document.getElementById("count");
-  const elHist = document.getElementById("history");
-  const elSorted = document.getElementById("sorted");
-  const elEvents = document.getElementById("events");
-  const elNet = document.getElementById("net");
-  const btnDraw = document.getElementById("draw");
-  const elBoardL = document.getElementById("boardL");
-  const elBoardR = document.getElementById("boardR");
-
-  const SMORFIA = [
-    "",
-    "L'Italia", "La bambina", "La gatta", "Il maiale", "La mano", "Quella che guarda in terra", "Il vaso", "La Madonna", "La figliolanza",
-    "I fagioli", "I topolini", "Il soldato", "Sant'Antonio", "L'ubriaco", "Il ragazzo", "Il sedere", "La disgrazia", "Il sangue", "La risata",
-    "La festa", "La donna nuda", "Il pazzo", "Lo scemo", "Le guardie", "Natale", "Anna", "Il pitale", "I seni", "Il padre dei bambini",
-    "Le palle del tenente", "Il padrone di casa", "Il capitone", "Gli anni di Cristo", "La testa", "L'uccellino", "Le nacchere", "Il monaco", "Le botte",
-    "Il cappello", "La noia", "Il coltello", "Il caffè", "La donna al balcone", "La prigione", "Il vino buono", "Il denaro", "Il morto che parla",
-    "Il morto", "Il pane", "Il giardino", "La mamma", "Il vecchio", "Il cappotto", "La musica", "La caduta", "Il gobbo", "Il pacco",
-    "I peli", "Il lamento", "Il cacciatore", "Il pianto", "Il morto ammazzato", "La sposa", "Le lacrime", "La zuppa cotta", "Sottosopra",
-    "Il palazzo", "L'ommo 'e merda", "Il ponte", "L'ospedale", "La casa", "I diavoli", "La fontana", "La lanterna", "La meraviglia",
-    "La puttana", "Il ladro", "La bocca", "I piedi", "La tavola imbandita", "Il re", "Le donne", "I fiori", "Il maltempo",
-    "La chiesa", "Le anime del purgatorio", "La bottega", "I pidocchi", "Il buon cuore", "I bambini", "La paura", "La festa grande", "La fortuna"
-  ];
-
-  // ====== CREA TABELLONE 1..90 (QUESTO È QUELLO CHE TI MANCAVA) ======
-  const cells = [];
-  for (let n = 1; n <= 90; n++) {
-    const col = (n - 1) % 10;
-    const d = document.createElement("div");
-    d.className = "cell";
-    d.textContent = n;
-    d.dataset.n = n;
-    if (col < 5) elBoardL.appendChild(d);
-    else elBoardR.appendChild(d);
-    cells[n] = d;
-  }
-
-  // ====== BEEP (solo quando arrivano nuovi premi mostrati) ======
-  let audioCtx = null;
-  function ensureAudio_() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
-  }
-  window.addEventListener("pointerdown", ensureAudio_, { passive: true });
-  window.addEventListener("touchstart", ensureAudio_, { passive: true });
-
-  function beep() {
-    try {
-      ensureAudio_();
-      if (!audioCtx) return;
-
-      const start = audioCtx.currentTime;
-      const repeats = 3;
-      const gap = 0.12;
-      const dur = 0.10;
-      const peak = 0.22;
-
-      for (let i = 0; i < repeats; i++) {
-        const t0 = start + i * (dur + gap);
-
-        const o1 = audioCtx.createOscillator();
-        const o2 = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-
-        o1.type = "sine";
-        o2.type = "square";
-        o1.frequency.setValueAtTime(880, t0);
-        o2.frequency.setValueAtTime(1320, t0);
-
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(peak, t0 + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
-        o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
-        o1.start(t0); o2.start(t0);
-        o1.stop(t0 + dur + 0.01); o2.stop(t0 + dur + 0.01);
-      }
-    } catch (e) {}
-  }
-
-  // ====== Stato locale (append-only) ======
-  // ====== Stato locale (append-only) ======
-  const state = {
-    draws: [],
-    drawnSet: new Set(),
-    events: [],
-    last: null,
-    roomStatus: "open",
-
-    // ✅ nuovi cursori "row-based" (globali sul foglio)
-    sinceDrawRow: 1,
-    sinceEventRow: 1,
-
-    // manteniamo anche drawIndex per UI/disable
-    sinceDrawIndex: 0
-  };
-
-
-  function setNet(msg) {
-    if (!elNet) return;
-    elNet.textContent = msg ? ("Connessione: " + msg) : "Connessione: OK";
-  }
-
-  function fmtTime_(iso) {
-    try { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
-    catch (e) { return ""; }
-  }
-
-  // ====== Premi: beep SOLO se appare una nuova vincita mostrata ======
-  let prizeBeepArmed = false;
-  let seenWinKeys = new Set();
-
-  function renderPrizes_() {
-    const prizeOrder = ["AMBO", "TERNO", "QUATERNA", "CINQUINA", "TOMBOLA"];
-    const ev = state.events.slice();
-
-    const firstDrawByPrize = new Map();
-    for (const e of ev) {
-      const pr = String(e.prize || "");
-      const di = Number(e.payload && e.payload.drawIndex);
-      if (!prizeOrder.includes(pr) || !Number.isFinite(di)) continue;
-      const cur = firstDrawByPrize.get(pr);
-      if (cur == null || di < cur) firstDrawByPrize.set(pr, di);
+    function getRoomId() {
+      const url = new URL(location.href);
+      const q = (url.searchParams.get("room") || "").trim().toUpperCase();
+      const ls = (localStorage.getItem("tombola_roomId") || "").trim().toUpperCase();
+      let room = q || ls;
+      if (!room) room = (prompt("Inserisci il codice ROOM (es. R636SQ):") || "").trim().toUpperCase();
+      if (room) localStorage.setItem("tombola_roomId", room);
+      return room || null;
     }
 
-    elEvents.innerHTML = "";
-    const any = prizeOrder.some(pr => firstDrawByPrize.has(pr));
-    if (!any) {
-      const empty = document.createElement("div");
-      empty.style.color = "rgba(0,0,0,.62)";
-      empty.style.fontWeight = "900";
-      empty.textContent = "Nessun premio ancora.";
-      elEvents.appendChild(empty);
+    function jsonp(action, params = {}, timeoutMs = 15000) {
+      return new Promise((resolve, reject) => {
+        const cb = "cb_" + Math.random().toString(36).slice(2);
+        const full = { action, ...params, callback: cb, nocache: Date.now() };
+        const qs = new URLSearchParams(full).toString();
+        const url = API_BASE + "?" + qs;
 
+        const s = document.createElement("script");
+        const timer = setTimeout(() => { cleanup(); reject(new Error("Timeout")); }, timeoutMs);
+
+        function cleanup() {
+          clearTimeout(timer);
+          if (window[cb]) delete window[cb];
+          if (s && s.parentNode) s.parentNode.removeChild(s);
+        }
+
+        window[cb] = (data) => { cleanup(); resolve(data); };
+        s.onerror = () => { cleanup(); reject(new Error("Network error")); };
+
+        s.src = url;
+        document.body.appendChild(s);
+      });
+    }
+
+    // ====== UI refs ======
+    const roomId = getRoomId();
+    document.getElementById("roomBadge").textContent = roomId || "—";
+
+    const elLast = document.getElementById("last");
+    const elSm = document.getElementById("smorfia");
+    const elCount = document.getElementById("count");
+    const elHist = document.getElementById("history");
+    const elSorted = document.getElementById("sorted");
+    const elEvents = document.getElementById("events");
+    const elNet = document.getElementById("net");
+    const btnDraw = document.getElementById("draw");
+    const elBoardL = document.getElementById("boardL");
+    const elBoardR = document.getElementById("boardR");
+
+    const SMORFIA = [
+      "",
+      "L'Italia","La bambina","La gatta","Il maiale","La mano","Quella che guarda in terra","Il vaso","La Madonna","La figliolanza",
+      "I fagioli","I topolini","Il soldato","Sant'Antonio","L'ubriaco","Il ragazzo","Il sedere","La disgrazia","Il sangue","La risata",
+      "La festa","La donna nuda","Il pazzo","Lo scemo","Le guardie","Natale","Anna","Il pitale","I seni","Il padre dei bambini",
+      "Le palle del tenente","Il padrone di casa","Il capitone","Gli anni di Cristo","La testa","L'uccellino","Le nacchere","Il monaco","Le botte",
+      "Il cappello","La noia","Il coltello","Il caffè","La donna al balcone","La prigione","Il vino buono","Il denaro","Il morto che parla",
+      "Il morto","Il pane","Il giardino","La mamma","Il vecchio","Il cappotto","La musica","La caduta","Il gobbo","Il pacco",
+      "I peli","Il lamento","Il cacciatore","Il pianto","Il morto ammazzato","La sposa","Le lacrime","La zuppa cotta","Sottosopra",
+      "Il palazzo","L'ommo 'e merda","Il ponte","L'ospedale","La casa","I diavoli","La fontana","La lanterna","La meraviglia",
+      "La puttana","Il ladro","La bocca","I piedi","La tavola imbandita","Il re","Le donne","I fiori","Il maltempo",
+      "La chiesa","Le anime del purgatorio","La bottega","I pidocchi","Il buon cuore","I bambini","La paura","La festa grande","La fortuna"
+    ];
+
+    // ====== CREA TABELLONE 1..90 ======
+    const cells = [];
+    for (let n = 1; n <= 90; n++) {
+      const col = (n - 1) % 10;
+      const d = document.createElement("div");
+      d.className = "cell";
+      d.textContent = n;
+      d.dataset.n = String(n);
+      if (col < 5) elBoardL.appendChild(d);
+      else elBoardR.appendChild(d);
+      cells[n] = d;
+    }
+
+    // ====== AUDIO BEEP (solo nuove vincite mostrate) ======
+    let audioCtx = null;
+    function ensureAudio_() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+    }
+    window.addEventListener("pointerdown", ensureAudio_, { passive: true });
+    window.addEventListener("touchstart", ensureAudio_, { passive: true });
+
+    function beep() {
+      try {
+        ensureAudio_();
+        if (!audioCtx) return;
+
+        const start = audioCtx.currentTime;
+        const repeats = 3, gap = 0.12, dur = 0.10, peak = 0.22;
+
+        for (let i = 0; i < repeats; i++) {
+          const t0 = start + i * (dur + gap);
+
+          const o1 = audioCtx.createOscillator();
+          const o2 = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+
+          o1.type = "sine";  o2.type = "square";
+          o1.frequency.setValueAtTime(880, t0);
+          o2.frequency.setValueAtTime(1320, t0);
+
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(peak, t0 + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+          o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
+          o1.start(t0); o2.start(t0);
+          o1.stop(t0 + dur + 0.01); o2.stop(t0 + dur + 0.01);
+        }
+      } catch (e) {}
+    }
+
+    function setNet(msg) {
+      elNet.textContent = msg ? ("Connessione: " + msg) : "Connessione: OK";
+    }
+    function fmtTime_(iso) {
+      try { return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+      catch (e) { return ""; }
+    }
+
+    // ====== STATE (append-only) ======
+    const state = {
+      roomEpoch: null,
+      roomStatus: "open",
+      draws: [],                 // {n, drawIndex, at}
+      drawnSet: new Set(),       // numbers drawn
+      maxDrawIndex: 0,
+
+      prizes: [],                // {prize, drawIndex, playerId, name, cardIndex, winNumbers, at}
+      sinceDrawRow: 1,
+      sincePrizeRow: 1
+    };
+
+    // ====== PREMI (beep solo quando appare una nuova vincita “mostrata”) ======
+    let prizeBeepArmed = false;
+    let seenWinKeys = new Set();
+
+    function renderPrizes_() {
+      const prizeOrder = ["AMBO", "TERNO", "QUATERNA", "CINQUINA", "TOMBOLA"];
+      const ev = state.prizes.slice();
+
+      // per ogni premio, considera il drawIndex minimo (cioè il primo momento in cui quel premio è stato ottenuto)
+      const firstDrawByPrize = new Map();
+      for (const e of ev) {
+        const pr = String(e.prize || "");
+        const di = Number(e.drawIndex);
+        if (!prizeOrder.includes(pr) || !Number.isFinite(di)) continue;
+        const cur = firstDrawByPrize.get(pr);
+        if (cur == null || di < cur) firstDrawByPrize.set(pr, di);
+      }
+
+      elEvents.innerHTML = "";
+      const any = prizeOrder.some(pr => firstDrawByPrize.has(pr));
+      if (!any) {
+        const empty = document.createElement("div");
+        empty.style.color = "rgba(0,0,0,.62)";
+        empty.style.fontWeight = "900";
+        empty.textContent = "Nessun premio ancora.";
+        elEvents.appendChild(empty);
+
+        if (!prizeBeepArmed) {
+          prizeBeepArmed = true;
+          seenWinKeys = new Set();
+        }
+        return false;
+      }
+
+      const currentWinKeys = [];
+
+      for (const pr of prizeOrder) {
+        if (!firstDrawByPrize.has(pr)) continue;
+        const di = firstDrawByPrize.get(pr);
+
+        const winners = ev
+          .filter(e => String(e.prize) === pr && Number(e.drawIndex) === di)
+          .sort((a, b) => {
+            const an = String(a.name || a.playerId || "");
+            const bn = String(b.name || b.playerId || "");
+            if (an < bn) return -1;
+            if (an > bn) return 1;
+            return (Number(a.cardIndex) || 0) - (Number(b.cardIndex) || 0);
+          });
+
+        for (const w of winners) {
+          const pid = String(w.playerId || "");
+          const cix = Number(w.cardIndex);
+          currentWinKeys.push(`${pr}|${di}|${pid}|${cix}`);
+        }
+
+        const parts = [pr];
+        for (const w of winners) {
+          const name = String(w.name || w.playerId || "").trim() || "—";
+          const card = Number(w.cardIndex) + 1;
+          const win = Array.isArray(w.winNumbers) ? w.winNumbers : [];
+          const nums = win.length ? win.join(", ") : "—";
+          parts.push(`${name} — Cartella ${card} — Numeri: ${nums}`);
+        }
+
+        const line = document.createElement("div");
+        line.className = "eventLine";
+        const t = winners.length ? fmtTime_(winners[0].at) : "";
+        line.textContent = parts.join(" — ") + (t ? `  •  ${t}` : "");
+        elEvents.appendChild(line);
+      }
+
+      // beep arm: niente beep al primo render “non vuoto”
       if (!prizeBeepArmed) {
         prizeBeepArmed = true;
-        seenWinKeys = new Set();
-      }
-      return false;
-    }
-
-    const currentWinKeys = [];
-
-    for (const pr of prizeOrder) {
-      if (!firstDrawByPrize.has(pr)) continue;
-      const di = firstDrawByPrize.get(pr);
-
-      const winners = ev
-        .filter(e => String(e.prize) === pr && Number(e.payload && e.payload.drawIndex) === di)
-        .sort((a, b) => {
-          const an = String(a.name || a.playerId || "");
-          const bn = String(b.name || b.playerId || "");
-          if (an < bn) return -1;
-          if (an > bn) return 1;
-          return (Number(a.cardIndex) || 0) - (Number(b.cardIndex) || 0);
-        });
-
-      for (const w of winners) {
-        const pid = String(w.playerId || "");
-        const cix = Number(w.cardIndex);
-        currentWinKeys.push(`${pr}|${di}|${pid}|${cix}`);
+        for (const k of currentWinKeys) seenWinKeys.add(k);
+        return false;
       }
 
-      const parts = [pr];
-      for (const w of winners) {
-        const name = String(w.name || w.playerId || "").trim() || "—";
-        const card = Number(w.cardIndex) + 1;
-        const win = Array.isArray(w.payload && w.payload.winNumbers) ? w.payload.winNumbers : [];
-        const nums = win.length ? win.join(", ") : "—";
-        parts.push(`${name} — Cartella ${card} — Numeri: ${nums}`);
+      let hasNew = false;
+      for (const k of currentWinKeys) {
+        if (!seenWinKeys.has(k)) {
+          seenWinKeys.add(k);
+          hasNew = true;
+        }
+      }
+      return hasNew;
+    }
+
+    function renderAll_() {
+      // reset class
+      for (let n = 1; n <= 90; n++) {
+        if (cells[n]) cells[n].classList.remove("drawn", "last");
+      }
+      for (const n of state.drawnSet) {
+        if (cells[n]) cells[n].classList.add("drawn");
       }
 
-      const line = document.createElement("div");
-      line.className = "eventLine";
-      const t = winners.length ? fmtTime_(winners[0].at) : "";
-      line.textContent = parts.join(" — ") + (t ? `  •  ${t}` : "");
-      elEvents.appendChild(line);
-    }
-
-    if (!prizeBeepArmed) {
-      prizeBeepArmed = true;
-      for (const k of currentWinKeys) seenWinKeys.add(k);
-      return false;
-    }
-
-    let hasNew = false;
-    for (const k of currentWinKeys) {
-      if (!seenWinKeys.has(k)) {
-        seenWinKeys.add(k);
-        hasNew = true;
+      const lastN = state.draws.length ? state.draws[state.draws.length - 1].n : null;
+      if (lastN && cells[lastN]) {
+        cells[lastN].classList.add("last");
+        elLast.textContent = String(lastN);
+        elSm.textContent = `💬 Smorfia: ${SMORFIA[lastN] || "—"}`;
+      } else {
+        elLast.textContent = "—";
+        elSm.textContent = "Pronto a iniziare ✨";
       }
-    }
-    return hasNew;
-  }
 
-  function renderAllFromLocal_() {
-    // board classes reset
-    for (let n = 1; n <= 90; n++) {
-      if (cells[n]) cells[n].classList.remove("drawn", "last");
-    }
-    for (const n of state.drawnSet) {
-      if (cells[n]) cells[n].classList.add("drawn");
-    }
+      elCount.textContent = `${state.draws.length} / 90`;
 
-    if (state.last && cells[state.last]) {
-      cells[state.last].classList.add("last");
-      elLast.textContent = state.last;
-      elSm.textContent = `💬 Smorfia: ${SMORFIA[state.last] || "—"}`;
-    } else {
-      elLast.textContent = "—";
-      elSm.textContent = "Pronto a iniziare ✨";
-    }
+      // storico
+      elHist.innerHTML = "";
+      for (let i = state.draws.length - 1; i >= 0; i--) {
+        const c = document.createElement("div");
+        c.className = "chip";
+        c.textContent = String(state.draws[i].n);
+        elHist.appendChild(c);
+      }
 
-    elCount.textContent = `${state.draws.length} / 90`;
-
-    // storico
-    elHist.innerHTML = "";
-    state.draws.slice().reverse().forEach(d => {
-      const c = document.createElement("div");
-      c.className = "chip";
-      c.textContent = d.n;
-      elHist.appendChild(c);
-    });
-
-    // ordinati
-    elSorted.innerHTML = "";
-    [...state.drawnSet].sort((a, b) => a - b).forEach(n => {
-      const c = document.createElement("div");
-      c.className = "chip";
-      c.textContent = n;
-      elSorted.appendChild(c);
-    });
-
-    // premi + beep se nuova vincita mostrata
-    const hasNewWinShown = renderPrizes_();
-    if (hasNewWinShown) requestAnimationFrame(() => setTimeout(() => beep(), 0));
-  }
-
-  // ====== Delta polling (Opzione 1: force dopo draw) ======
-  let pollInFlight = false;
-  let drawInFlight = false;
-  let pollQueuedForce = false;
-
-  async function pollDelta(force = false) {
-    if (!roomId) return;
-
-    if (pollInFlight) {
-      if (force) pollQueuedForce = true;
-      return;
-    }
-
-    pollInFlight = true;
-
-    try {
-      setNet("Sync…");
-
-      const res = await jsonp("delta", {
-        roomId,
-        // ✅ nuovi cursori
-        sinceDrawRow: state.sinceDrawRow,
-        sinceEventRow: state.sinceEventRow,
-
-        // (compat legacy: non fa male lasciarlo)
-        sinceDrawIndex: state.sinceDrawIndex || 0
+      // ordinati
+      elSorted.innerHTML = "";
+      [...state.drawnSet].sort((a, b) => a - b).forEach(n => {
+        const c = document.createElement("div");
+        c.className = "chip";
+        c.textContent = String(n);
+        elSorted.appendChild(c);
       });
 
+      const hasNewWinShown = renderPrizes_();
+      if (hasNewWinShown) requestAnimationFrame(() => setTimeout(() => beep(), 0));
+    }
 
+    function applyDraw_(d) {
+      const n = Number(d.n);
+      const di = Number(d.drawIndex);
+      const at = String(d.at || "");
+      if (!Number.isFinite(n) || n < 1 || n > 90) return;
+      if (!Number.isFinite(di) || di <= state.maxDrawIndex) return;
 
-      if (!res || !res.ok) {
-        setNet("Errore");
-        return;
-      }
+      // se per qualche ragione arriva un numero già visto, ignoralo
+      if (state.drawnSet.has(n)) return;
 
-            // ✅ aggiorna cursori row-based SEMPRE (anche se non ci sono eventi)
-      if (Number.isFinite(Number(res.lastDrawRow)))  state.sinceDrawRow  = Number(res.lastDrawRow);
-      if (Number.isFinite(Number(res.lastEventRow))) state.sinceEventRow = Number(res.lastEventRow);
+      state.draws.push({ n, drawIndex: di, at });
+      state.drawnSet.add(n);
+      state.maxDrawIndex = Math.max(state.maxDrawIndex, di);
+    }
 
-      const newDraws = Array.isArray(res.newDraws) ? res.newDraws : [];
-      for (const d of newDraws) {
-        const n  = Number(d.n);
-        const di = Number(d.drawIndex);
-        const at = String(d.at || "");
+    function applyPrize_(p) {
+      const pr = String(p.prize || "");
+      const di = Number(p.drawIndex);
+      if (!pr || !Number.isFinite(di)) return;
 
-        if (!Number.isFinite(n) || n < 1 || n > 90) continue;
-        if (!Number.isFinite(di) || di <= state.sinceDrawIndex) continue;
+      state.prizes.push({
+        prize: pr,
+        drawIndex: di,
+        playerId: String(p.playerId || ""),
+        name: String(p.name || ""),
+        cardIndex: Number(p.cardIndex),
+        winNumbers: Array.isArray(p.winNumbers) ? p.winNumbers : [],
+        at: String(p.at || "")
+      });
+    }
 
-        // extra safety contro duplicati
-        if (state.drawnSet.has(n)) continue;
+    // ====== DELTA POLL ======
+    let pollInFlight = false;
+    let drawInFlight = false;
+    let pollQueued = false;
 
-        state.draws.push({ n, drawIndex: di, at });
-        state.drawnSet.add(n);
-        state.last = n;
-        state.sinceDrawIndex = Math.max(state.sinceDrawIndex, di);
-      }
+    async function pollDelta(force = false) {
+      if (!roomId) return;
 
-      const newEvents = Array.isArray(res.newEvents) ? res.newEvents : [];
-      for (const e of newEvents) {
-        state.events.push(e);
-      }
+      if (pollInFlight) { if (force) pollQueued = true; return; }
+      pollInFlight = true;
 
-      state.roomStatus = String(res.roomStatus || state.roomStatus || "");
+      try {
+        setNet("Sync…");
+        const res = await jsonp("delta", {
+          roomId,
+          sinceDrawRow: state.sinceDrawRow,
+          sincePrizeRow: state.sincePrizeRow
+        });
 
+        if (!res || !res.ok) { setNet("Errore"); return; }
 
-      if (newDraws.length || newEvents.length) renderAllFromLocal_();
+        // epoch reset (opzionale): se cambia, ricarico la pagina
+        if (res.roomEpoch != null) {
+          const ep = String(res.roomEpoch);
+          if (state.roomEpoch != null && state.roomEpoch !== ep) location.reload();
+          state.roomEpoch = ep;
+        }
 
-      btnDraw.disabled =
-        drawInFlight ||
-        state.sinceDrawIndex >= 90 ||
-        String(state.roomStatus).toLowerCase() === "closed";
+        if (Number.isFinite(Number(res.lastDrawRow))) state.sinceDrawRow = Number(res.lastDrawRow);
+        if (Number.isFinite(Number(res.lastPrizeRow))) state.sincePrizeRow = Number(res.lastPrizeRow);
 
-      setNet("OK");
-    } catch (e) {
-      setNet("Errore rete");
-    } finally {
-      pollInFlight = false;
+        const nd = Array.isArray(res.newDraws) ? res.newDraws : [];
+        const np = Array.isArray(res.newPrizes) ? res.newPrizes : [];
 
-      if (pollQueuedForce) {
-        pollQueuedForce = false;
-        Promise.resolve().then(() => pollDelta(false));
+        for (const d of nd) applyDraw_(d);
+        for (const p of np) applyPrize_(p);
+
+        state.roomStatus = String(res.roomStatus || state.roomStatus || "open").toLowerCase();
+
+        if (force || nd.length || np.length) renderAll_();
+
+        btnDraw.disabled = drawInFlight || state.draws.length >= 90 || state.roomStatus === "closed";
+        setNet("OK");
+      } catch (e) {
+        setNet("Errore rete");
+      } finally {
+        pollInFlight = false;
+        if (pollQueued) { pollQueued = false; Promise.resolve().then(() => pollDelta(false)); }
       }
     }
-  }
 
-  async function draw() {
-    if (!roomId) return;
-    if (drawInFlight) return;
-    if (state.sinceDrawIndex >= 90) return;
-    if (String(state.roomStatus).toLowerCase() === "closed") return;
+    async function draw() {
+      if (!roomId) return;
+      if (drawInFlight) return;
+      if (state.roomStatus === "closed") return;
+      if (state.draws.length >= 90) return;
 
-    drawInFlight = true;
-    btnDraw.disabled = true;
+      drawInFlight = true;
+      btnDraw.disabled = true;
 
-    try {
-      let n;
-      do { n = Math.floor(Math.random() * 90) + 1; } while (state.drawnSet.has(n));
+      try {
+        const res = await jsonp("draw", { roomId });
+        if (res && res.ok) {
+          // applico subito (poi delta conferma/aggiusta)
+          applyDraw_(res);
+          if (res.roomStatus) state.roomStatus = String(res.roomStatus).toLowerCase();
+          renderAll_();
+        }
+        await pollDelta(true);
+      } catch (e) {
+        setNet("Errore draw");
+      } finally {
+        drawInFlight = false;
+        btnDraw.disabled = state.draws.length >= 90 || state.roomStatus === "closed";
+      }
+    }
 
-      await jsonp("draw", { roomId, n });
+    btnDraw.onclick = draw;
+    window.addEventListener("keydown", (e) => {
+      if (e.key === " ") { e.preventDefault(); draw(); }
+    });
 
-      // ✅ Opzione 1: forzo subito un delta
+    // ====== SNOW ======
+    const snow = document.getElementById("snow");
+    const N = 26;
+    for (let i = 0; i < N; i++) {
+      const f = document.createElement("div");
+      const isGold = Math.random() < 0.20;
+      f.className = "flake" + (isGold ? " gold" : "");
+      const x = Math.random() * 100;
+      const size = 3 + Math.random() * 5;
+      const dur = 9 + Math.random() * 14;
+      const dx = (Math.random() * 2 - 1) * 140 + "px";
+      f.style.left = x + "vw";
+      f.style.width = size + "px";
+      f.style.height = size + "px";
+      f.style.animationDuration = dur + "s";
+      f.style.setProperty("--dx", dx);
+      f.style.opacity = (0.30 + Math.random() * 0.55).toFixed(2);
+      f.style.filter = `blur(${(Math.random() * 0.6).toFixed(2)}px)`;
+      f.style.animationDelay = (-Math.random() * dur) + "s";
+      snow.appendChild(f);
+    }
+
+    // ====== BOOT ======
+    (async () => {
+      btnDraw.disabled = true;
       await pollDelta(true);
-    } finally {
-      drawInFlight = false;
-      btnDraw.disabled =
-        state.sinceDrawIndex >= 90 ||
-        String(state.roomStatus).toLowerCase() === "closed";
-    }
-  }
-
-  btnDraw.onclick = draw;
-  window.addEventListener("keydown", (e) => {
-    if (e.key === " ") { e.preventDefault(); draw(); }
-  });
-
-  // ====== Snow ======
-  const snow = document.getElementById("snow");
-  const N = 26;
-  for (let i = 0; i < N; i++) {
-    const f = document.createElement("div");
-    const isGold = Math.random() < 0.20;
-    f.className = "flake" + (isGold ? " gold" : "");
-    const x = Math.random() * 100;
-    const size = 3 + Math.random() * 5;
-    const dur = 9 + Math.random() * 14;
-    const dx = (Math.random() * 2 - 1) * 140 + "px";
-    f.style.left = x + "vw";
-    f.style.width = size + "px";
-    f.style.height = size + "px";
-    f.style.animationDuration = dur + "s";
-    f.style.setProperty("--dx", dx);
-    f.style.opacity = (0.30 + Math.random() * 0.55).toFixed(2);
-    f.style.filter = `blur(${(Math.random() * 0.6).toFixed(2)}px)`;
-    f.style.animationDelay = (-Math.random() * dur) + "s";
-    snow.appendChild(f);
-  }
-
-  // ====== BOOT ======
-  (async () => {
-    await pollDelta(true); // primo giro: prende tutto
-    setInterval(() => pollDelta(false), POLL_MS);
-  })();
-</script>
-
+      btnDraw.disabled = state.roomStatus === "closed";
+      setInterval(() => pollDelta(false), POLL_MS);
+    })();
+  </script>
 </body>
-
 </html>

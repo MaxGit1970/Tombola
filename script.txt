@@ -1,25 +1,28 @@
-/** Tombola Natalizia - Backend su Google Sheets (Apps Script Web App)
- *  Append-only:
- *  - NO undo/reset
- *  - Client tabellone usa "delta": newDraws + newEvents(PRIZE)
- *
- *  JSONP:
- *  - ?callback=...
+/** Tombola Natalizia - Backend Apps Script (Web App)
+ *  Obiettivo performance:
+ *  - mark() O(1) (no scansioni su Marks/Prizes)
+ *  - delta() veloce (usa State + tail eventi)
+ *  Log audit rimane append-only: Draws, Marks, Prizes, Events
  */
 
 const CFG = {
   SHEETS: {
-    ROOMS:  "Rooms",
-    PLAYERS:"Players",
-    CARDS:  "Cards",
-    DRAWS:  "Draws",
-    MARKS:  "Marks",
-    PRIZES: "Prizes",
-    EVENTS: "Events",
+    ROOMS:       "Rooms",
+    PLAYERS:     "Players",
+    CARDS:       "Cards",
+    DRAWS:       "Draws",
+    MARKS:       "Marks",
+    PRIZES:      "Prizes",
+    EVENTS:      "Events",
+
+    // NUOVI
+    STATE:       "State",
+    MARKS_STATE: "MarksState",
+    PRIZES_STATE:"PrizesState",
   },
-  TABELLONE: {
-    playerId: "TABELLONE",
-    name: "TABELLONE",
+  LIMITS: {
+    EVENTS_TAIL_MAX: 120,   // quanti eventi teniamo nello snapshot (tail)
+    CACHE_TTL_SEC:   30
   }
 };
 
@@ -99,141 +102,61 @@ function init_(){
   getOrCreateSheet_(CFG.SHEETS.MARKS,   ["roomId","playerId","cardIndex","n","marked","createdAt"]);
   getOrCreateSheet_(CFG.SHEETS.PRIZES,  ["roomId","playerId","cardIndex","prize","createdAt"]);
   getOrCreateSheet_(CFG.SHEETS.EVENTS,  ["roomId","createdAt","type","playerId","name","cardIndex","prize","payloadJson"]);
+
+  // NUOVI
+  getOrCreateSheet_(CFG.SHEETS.STATE, [
+    "roomId","updatedAt","roomStatus",
+    "drawsJson","lastDrawIndex",
+    "eventsTailJson","eventsTailFromAt","lastEventAt"
+  ]);
+
+  getOrCreateSheet_(CFG.SHEETS.MARKS_STATE, [
+    "key","roomId","playerId","cardIndex","markedCsv","updatedAt"
+  ]);
+
+  getOrCreateSheet_(CFG.SHEETS.PRIZES_STATE, [
+    "key","roomId","playerId","cardIndex","prizesJson","updatedAt"
+  ]);
+
   return {sheets:Object.values(CFG.SHEETS)};
 }
 
+// -------------------- Lock / time / cache --------------------
 function lock_(fn){
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try { return fn(); }
   finally { lock.releaseLock(); }
 }
-
 function nowISO_(){ return new Date().toISOString(); }
-
-// -------------------- Fast cache (ScriptCache) --------------------
-const SCACHE = CacheService.getScriptCache();
-const CACHE_TTL_SEC = 21600; // 6h
-
-function ckey_(...parts){ return parts.join("|"); }
-
+function cache_(){ return CacheService.getScriptCache(); }
 function cacheGetJson_(key){
-  const s = SCACHE.get(key);
+  const s = cache_().get(key);
   if(!s) return null;
-  try{ return JSON.parse(s); }catch(e){ return null; }
+  try { return JSON.parse(s); } catch(e){ return null; }
+}
+function cachePutJson_(key, obj){
+  try { cache_().put(key, JSON.stringify(obj), CFG.LIMITS.CACHE_TTL_SEC); } catch(e){}
+}
+function ckState_(roomId){ return `STATE:${roomId}`; }
+function ckCard_(roomId, playerId, cardIndex){ return `CARD:${roomId}:${playerId}:${cardIndex}`; }
+function ckMarks_(roomId, playerId, cardIndex){ return `MARKS:${roomId}:${playerId}:${cardIndex}`; }
+function ckPrizes_(roomId, playerId, cardIndex){ return `PRIZES:${roomId}:${playerId}:${cardIndex}`; }
+
+// -------------------- Util: find row by key (TextFinder) --------------------
+function findRowByExact_(sh, col, value){
+  const tf = sh.createTextFinder(String(value))
+    .matchEntireCell(true)
+    .matchCase(true)
+    .findNext();
+  if(!tf) return 0;
+  const r = tf.getRow();
+  return r >= 2 ? r : 0;
 }
 
-function cachePutJson_(key, obj, ttlSec){
-  try{ SCACHE.put(key, JSON.stringify(obj), ttlSec || CACHE_TTL_SEC); }catch(e){}
+function safeJson_(s){
+  try{ return JSON.parse(s); }catch(e){ return {}; }
 }
-
-function cacheRemove_(key){
-  try{ SCACHE.remove(key); }catch(e){}
-}
-
-function keyDrawMap_(roomId){ return ckey_("DRAWMAP", roomId); }
-function keyCard_(roomId, playerId, cardIndex){ return ckey_("CARD", roomId, playerId, String(cardIndex)); }
-function keyMarks_(roomId, playerId, cardIndex){ return ckey_("MARKS", roomId, playerId, String(cardIndex)); }
-function keyPrizes_(roomId, playerId, cardIndex){ return ckey_("PRIZES", roomId, playerId, String(cardIndex)); }
-
-function getDrawIndexMapFast_(roomId){
-  const key = keyDrawMap_(roomId);
-  const obj = cacheGetJson_(key);
-  if(obj && typeof obj === "object"){
-    const m = new Map();
-    Object.keys(obj).forEach(k=>{
-      const n = Number(k), di = Number(obj[k]);
-      if(Number.isFinite(n) && Number.isFinite(di)) m.set(n, di);
-    });
-    return m;
-  }
-  const draws = getDraws_(roomId); // fallback scan (una tantum quando cache manca)
-  const o = {};
-  draws.forEach(d=>{
-    const n = Number(d.n), di = Number(d.drawIndex);
-    if(Number.isFinite(n) && Number.isFinite(di)) o[String(n)] = di;
-  });
-  cachePutJson_(key, o);
-  const m = new Map();
-  Object.keys(o).forEach(k=> m.set(Number(k), Number(o[k])) );
-  return m;
-}
-
-function updateDrawIndexMapCache_(roomId, n, drawIndex){
-  const key = keyDrawMap_(roomId);
-  const obj = cacheGetJson_(key);
-  const o = (obj && typeof obj === "object") ? obj : {};
-  o[String(Number(n))] = Number(drawIndex) || 0;
-  cachePutJson_(key, o);
-}
-
-function setCardCache_(roomId, playerId, cardIndex, grid, numbersCsv){
-  cachePutJson_(keyCard_(roomId, playerId, cardIndex), { grid, numbersCsv: String(numbersCsv || "") });
-}
-
-function getCardFast_(roomId, playerId, cardIndex){
-  const cached = cacheGetJson_(keyCard_(roomId, playerId, cardIndex));
-  if(cached && cached.grid){
-    const numbersSet = new Set(String(cached.numbersCsv||"").split(",").filter(Boolean).map(x=>Number(x)));
-    return { grid: cached.grid, numbersSet };
-  }
-  const card = getCard_(roomId, playerId, cardIndex); // fallback scan
-  if(card){
-    const numbersCsv = [...card.numbersSet].filter(n=>Number.isFinite(n)).join(",");
-    setCardCache_(roomId, playerId, cardIndex, card.grid, numbersCsv);
-  }
-  return card;
-}
-
-function getMarkedSetFast_(roomId, playerId, cardIndex){
-  const key = keyMarks_(roomId, playerId, cardIndex);
-  const cached = cacheGetJson_(key);
-  if(Array.isArray(cached)){
-    return new Set(cached.map(Number).filter(n=>Number.isFinite(n)));
-  }
-  const set = getMarkedSet_(roomId, playerId, cardIndex); // fallback scan
-  cachePutJson_(key, [...set]);
-  return set;
-}
-
-function applyMarkToCache_(roomId, playerId, cardIndex, n, marked){
-  const key = keyMarks_(roomId, playerId, cardIndex);
-  const cached = cacheGetJson_(key);
-  const set = new Set(Array.isArray(cached) ? cached.map(Number) : []);
-  const nn = Number(n);
-  if(marked) set.add(nn); else set.delete(nn);
-  cachePutJson_(key, [...set]);
-  return set;
-}
-
-function getPrizeSetFast_(roomId, playerId, cardIndex){
-  const key = keyPrizes_(roomId, playerId, cardIndex);
-  const cached = cacheGetJson_(key);
-  if(Array.isArray(cached)) return new Set(cached.map(String));
-
-  const sh = getOrCreateSheet_(CFG.SHEETS.PRIZES);
-  const last = sh.getLastRow();
-  const set = new Set();
-  if(last >= 2){
-    const rows = sh.getRange(2,1,last-1,5).getValues();
-    for(const r of rows){
-      if(String(r[0])===roomId && String(r[1])===playerId && Number(r[2])===Number(cardIndex)){
-        set.add(String(r[3]||""));
-      }
-    }
-  }
-  cachePutJson_(key, [...set]);
-  return set;
-}
-
-function addPrizeToCache_(roomId, playerId, cardIndex, prize){
-  const key = keyPrizes_(roomId, playerId, cardIndex);
-  const cached = cacheGetJson_(key);
-  const set = new Set(Array.isArray(cached) ? cached.map(String) : []);
-  set.add(String(prize));
-  cachePutJson_(key, [...set]);
-}
-
 
 function randRoomId_(){
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -242,35 +165,170 @@ function randRoomId_(){
   return out;
 }
 
-function safeJson_(s){
-  try{ return JSON.parse(s); }catch(e){ return {}; }
+function roomKey_(roomId){ return String(roomId||"").trim().toUpperCase(); }
+function key3_(roomId, playerId, cardIndex){
+  return `${roomKey_(roomId)}|${String(playerId||"").trim().toUpperCase()}|${Number(cardIndex)}`;
 }
 
+// -------------------- Rooms helpers --------------------
 function getRoomRow_(roomId){
   init_();
   const sh = getOrCreateSheet_(CFG.SHEETS.ROOMS);
-  const last = sh.getLastRow();
-  if(last < 2) return null;
-  const vals = sh.getRange(2,1,last-1,3).getValues();
-  for(let i=0;i<vals.length;i++){
-    if(String(vals[i][0]||"").trim().toUpperCase() === roomId){
-      return { rowIndex: i+2, row: vals[i] };
-    }
-  }
-  return null;
+  const rid = roomKey_(roomId);
+  const rowIndex = findRowByExact_(sh, 1, rid);
+  if(!rowIndex) return null;
+  const row = sh.getRange(rowIndex,1,1,3).getValues()[0];
+  return { rowIndex, row };
 }
-
 function getRoomStatus_(roomId){
   const r = getRoomRow_(roomId);
   return r ? String(r.row[2]||"") : "";
 }
-
 function setRoomStatus_(roomId, status){
   const r = getRoomRow_(roomId);
   if(!r) return false;
   const sh = getOrCreateSheet_(CFG.SHEETS.ROOMS);
   sh.getRange(r.rowIndex, 3).setValue(String(status));
   return true;
+}
+
+// -------------------- State (snapshot room) --------------------
+function defaultState_(roomId){
+  return {
+    roomId: roomKey_(roomId),
+    updatedAt: nowISO_(),
+    roomStatus: String(getRoomStatus_(roomId)||""),
+    draws: [],              // [{n,drawIndex,at}]
+    lastDrawIndex: 0,
+    eventsTail: [],         // tail PRIZE events
+    eventsTailFromAt: "",
+    lastEventAt: ""
+  };
+}
+
+function readStateFromSheet_(roomId){
+  const sh = getOrCreateSheet_(CFG.SHEETS.STATE);
+  const rid = roomKey_(roomId);
+  const rowIndex = findRowByExact_(sh, 1, rid);
+  if(!rowIndex) return null;
+
+  const r = sh.getRange(rowIndex,1,1,8).getValues()[0];
+  const draws = safeJson_(String(r[3]||"[]"));
+  const eventsTail = safeJson_(String(r[5]||"[]"));
+
+  return {
+    roomId: rid,
+    updatedAt: String(r[1]||""),
+    roomStatus: String(r[2]||""),
+    draws: Array.isArray(draws) ? draws : [],
+    lastDrawIndex: Number(r[4]||0) || 0,
+    eventsTail: Array.isArray(eventsTail) ? eventsTail : [],
+    eventsTailFromAt: String(r[6]||""),
+    lastEventAt: String(r[7]||"")
+  };
+}
+
+function saveStateToSheet_(st){
+  const sh = getOrCreateSheet_(CFG.SHEETS.STATE);
+  const rid = roomKey_(st.roomId);
+  const rowIndex = findRowByExact_(sh, 1, rid);
+
+  const updatedAt = nowISO_();
+  const out = [
+    rid,
+    updatedAt,
+    String(st.roomStatus||""),
+    JSON.stringify(st.draws || []),
+    Number(st.lastDrawIndex||0) || 0,
+    JSON.stringify(st.eventsTail || []),
+    String(st.eventsTailFromAt||""),
+    String(st.lastEventAt||"")
+  ];
+
+  if(rowIndex){
+    sh.getRange(rowIndex,1,1,out.length).setValues([out]);
+  }else{
+    sh.appendRow(out);
+  }
+
+  st.updatedAt = updatedAt;
+  cachePutJson_(ckState_(rid), st);
+  return st;
+}
+
+function rebuildStateFromLogs_(roomId){
+  init_();
+  const rid = roomKey_(roomId);
+  const st = defaultState_(rid);
+
+  // draws (max 90 per room, ma il foglio può contenere più room)
+  const shD = getOrCreateSheet_(CFG.SHEETS.DRAWS);
+  const lastD = shD.getLastRow();
+  if(lastD >= 2){
+    const rows = shD.getRange(2,1,lastD-1,4).getValues();
+    for(const r of rows){
+      if(String(r[0]||"").toUpperCase() !== rid) continue;
+      st.draws.push({ roomId: rid, n:Number(r[1]), drawIndex:Number(r[2])||0, at:String(r[3]||"") });
+    }
+    st.draws.sort((a,b)=>a.drawIndex-b.drawIndex);
+    st.lastDrawIndex = st.draws.length ? st.draws[st.draws.length-1].drawIndex : 0;
+  }
+
+  // events (solo PRIZE) - qui leggiamo tutto solo in rebuild (raro)
+  const shE = getOrCreateSheet_(CFG.SHEETS.EVENTS);
+  const lastE = shE.getLastRow();
+  const allEvents = [];
+  if(lastE >= 2){
+    const rows = shE.getRange(2,1,lastE-1,8).getValues();
+    for(const r of rows){
+      if(String(r[0]||"").toUpperCase() !== rid) continue;
+      if(String(r[2]||"") !== "PRIZE") continue;
+      const at = String(r[1]||"");
+      allEvents.push({
+        at,
+        type: "PRIZE",
+        playerId: String(r[3]||""),
+        name: String(r[4]||""),
+        cardIndex: Number(r[5]||0),
+        prize: String(r[6]||""),
+        payload: safeJson_(String(r[7]||"{}"))
+      });
+    }
+    allEvents.sort((a,b)=> (a.at < b.at ? -1 : (a.at > b.at ? 1 : 0)));
+  }
+
+  st.lastEventAt = allEvents.length ? allEvents[allEvents.length-1].at : "";
+  st.eventsTail = allEvents.slice(-CFG.LIMITS.EVENTS_TAIL_MAX);
+  st.eventsTailFromAt = st.eventsTail.length ? String(st.eventsTail[0].at||"") : "";
+
+  // status
+  st.roomStatus = String(getRoomStatus_(rid) || "");
+  return saveStateToSheet_(st);
+}
+
+function getState_(roomId){
+  const rid = roomKey_(roomId);
+  const cached = cacheGetJson_(ckState_(rid));
+  if(cached && cached.roomId === rid) return cached;
+
+  const fromSheet = readStateFromSheet_(rid);
+  if(fromSheet){
+    cachePutJson_(ckState_(rid), fromSheet);
+    return fromSheet;
+  }
+
+  // se manca completamente (prima esecuzione o sheet nuovo), rebuild
+  return rebuildStateFromLogs_(rid);
+}
+
+function pushEventToStateTail_(st, ev){
+  const tail = Array.isArray(st.eventsTail) ? st.eventsTail : [];
+  tail.push(ev);
+  while(tail.length > CFG.LIMITS.EVENTS_TAIL_MAX) tail.shift();
+  st.eventsTail = tail;
+  st.eventsTailFromAt = tail.length ? String(tail[0].at||"") : "";
+  st.lastEventAt = tail.length ? String(tail[tail.length-1].at||"") : st.lastEventAt;
+  return st;
 }
 
 // -------------------- Rooms --------------------
@@ -284,11 +342,17 @@ function createRoom_(){
     const existing = new Set();
     if(last >= 2){
       const vals = sh.getRange(2,1,last-1,1).getValues();
-      vals.forEach(r => existing.add(String(r[0]||"")));
+      vals.forEach(r => existing.add(String(r[0]||"").trim().toUpperCase()));
     }
     while(existing.has(roomId)) roomId = randRoomId_();
 
     sh.appendRow([roomId, nowISO_(), "open"]);
+
+    // crea anche State subito
+    const st = defaultState_(roomId);
+    st.roomStatus = "open";
+    saveStateToSheet_(st);
+
     return {ok:true, roomId};
   });
 }
@@ -335,9 +399,9 @@ function purgeAllRooms_(){
   });
 }
 
-// -------------------- Players / Cards (per cartelle) --------------------
+// -------------------- Players / Cards --------------------
 function join_(p){
-  const roomId = String(p.roomId || "").trim().toUpperCase();
+  const roomId = roomKey_(p.roomId);
   let name = String(p.name || "").trim();
   if(!roomId) throw new Error("Missing roomId");
 
@@ -372,7 +436,7 @@ function join_(p){
 }
 
 function registerCards_(p){
-  const roomId = String(p.roomId || "").trim().toUpperCase();
+  const roomId = roomKey_(p.roomId);
   const playerId = String(p.playerId || "").trim().toUpperCase();
   const cardsJson = String(p.cardsJson || "").trim();
 
@@ -400,13 +464,6 @@ function registerCards_(p){
       }
     }
 
-    // ✅ reset cache per questo player (evita tombole false per marks vecchie)
-    for(let i=0;i<12;i++){
-      cacheRemove_(keyCard_(roomId, playerId, i));
-      cachePutJson_(keyMarks_(roomId, playerId, i), []);
-      cachePutJson_(keyPrizes_(roomId, playerId, i), []);
-    }
-
     cards.forEach(c=>{
       const cardIndex = Number(c.cardIndex);
       const grid = c.grid;
@@ -419,21 +476,51 @@ function registerCards_(p){
         }
       }
       const numbersCsv = numbers.filter(n=>Number.isFinite(n)).join(",");
-
       shC.appendRow([roomId, playerId, cardIndex, JSON.stringify(grid), numbersCsv, nowISO_()]);
 
-      // ✅ cache card (così mark() non scansiona Cards)
-      setCardCache_(roomId, playerId, cardIndex, grid, numbersCsv);
+      // reset cache card
+      cache_().remove(ckCard_(roomId, playerId, cardIndex));
     });
 
     return {ok:true, saved: cards.length};
   });
 }
 
+function getCard_(roomId, playerId, cardIndex){
+  const rid = roomKey_(roomId);
+  const pid = String(playerId||"").trim().toUpperCase();
+  const cix = Number(cardIndex);
+
+  const ck = ckCard_(rid, pid, cix);
+  const cached = cacheGetJson_(ck);
+  if(cached && cached.grid && cached.numbersCsv != null){
+    const numbersSet = new Set(String(cached.numbersCsv).split(",").filter(Boolean).map(x=>Number(x)));
+    return { grid: cached.grid, numbersSet };
+  }
+
+  const shC = getOrCreateSheet_(CFG.SHEETS.CARDS);
+  const last = shC.getLastRow();
+  if(last < 2) return null;
+
+  const rows = shC.getRange(2,1,last-1,6).getValues();
+  for(const r of rows){
+    if(String(r[0])!==rid) continue;
+    if(String(r[1])!==pid) continue;
+    if(Number(r[2])!==cix) continue;
+
+    const grid = safeJson_(String(r[3]||"[]"));
+    const numbersCsv = String(r[4]||"");
+    const numbersSet = new Set(numbersCsv.split(",").filter(Boolean).map(x=>Number(x)));
+
+    cachePutJson_(ck, { grid, numbersCsv });
+    return { grid, numbersSet };
+  }
+  return null;
+}
 
 // -------------------- Draws (append-only) --------------------
 function draw_(p){
-  const roomId = String(p.roomId || "").trim().toUpperCase();
+  const roomId = roomKey_(p.roomId);
   const n = Number(p.n);
 
   if(!roomId) throw new Error("Missing roomId");
@@ -442,81 +529,78 @@ function draw_(p){
   return lock_(()=>{
     init_();
 
-    const st = String(getRoomStatus_(roomId) || "").trim().toLowerCase();
-    if(st === "closed"){
+    const st = getState_(roomId);
+    st.roomStatus = String(getRoomStatus_(roomId) || st.roomStatus || "");
+
+    if(String(st.roomStatus).trim().toLowerCase() === "closed"){
       return { ok:false, error:"Room is closed", roomId };
     }
 
-    // ✅ uso cache draw map (max 90 entries) invece di scansionare tutto il foglio
-    const drawIndexMap = getDrawIndexMapFast_(roomId);
-    if(drawIndexMap.has(n)){
+    // check already drawn via state
+    if((st.draws || []).some(d => Number(d.n) === n)){
       return { ok:false, error:"Number already drawn", roomId, n };
     }
 
-    let maxIdx = 0;
-    for(const di of drawIndexMap.values()) if(di > maxIdx) maxIdx = di;
-
-    const drawIndex = maxIdx + 1;
+    const drawIndex = Number(st.lastDrawIndex||0) + 1;
     const ts = nowISO_();
 
+    // audit log
     const shD = getOrCreateSheet_(CFG.SHEETS.DRAWS);
     shD.appendRow([roomId, n, drawIndex, ts]);
 
-    // ✅ aggiorno cache subito
-    updateDrawIndexMapCache_(roomId, n, drawIndex);
-
-    // tabellone auto-marks (serve per calcolo premi anti-cheat)
-    autoTabelloneOnDraw_(roomId, n);
+    // update state
+    st.draws = Array.isArray(st.draws) ? st.draws : [];
+    st.draws.push({ roomId, n, drawIndex, at: ts });
+    st.lastDrawIndex = drawIndex;
 
     if(drawIndex >= 90){
       setRoomStatus_(roomId, "closed");
+      st.roomStatus = "closed";
+    }else{
+      st.roomStatus = String(getRoomStatus_(roomId) || st.roomStatus || "");
     }
+
+    saveStateToSheet_(st);
 
     return { ok:true, roomId, n, drawIndex, at: ts };
   });
 }
 
-
 // -------------------- Delta (tabellone) --------------------
 function delta_(p){
-  const roomId = String(p.roomId || "").trim().toUpperCase();
+  const roomId = roomKey_(p.roomId);
+  const sinceDrawIndex = Math.max(0, Number(p.sinceDrawIndex || 0) || 0);
+  const sinceEventAt = String(p.sinceEventAt || "").trim(); // ISO string, "" = dall'inizio
+
   if(!roomId) throw new Error("Missing roomId");
   init_();
 
-  const shD = getOrCreateSheet_(CFG.SHEETS.DRAWS);
-  const shE = getOrCreateSheet_(CFG.SHEETS.EVENTS);
+  const st = getState_(roomId);
+  st.roomStatus = String(getRoomStatus_(roomId) || st.roomStatus || "");
 
-  const sinceDrawRow  = Number(p.sinceDrawRow);
-  const sinceEventRow = Number(p.sinceEventRow);
+  // newDraws da state (veloce)
+  const draws = Array.isArray(st.draws) ? st.draws : [];
+  const newDraws = draws.filter(d => Number(d.drawIndex||0) > sinceDrawIndex)
+                        .map(d => ({ roomId, n:Number(d.n), drawIndex:Number(d.drawIndex), at:String(d.at||"") }))
+                        .sort((a,b)=>a.drawIndex-b.drawIndex);
 
-  const useRowCursor = Number.isFinite(sinceDrawRow) || Number.isFinite(sinceEventRow);
+  // newEvents:
+  // - se sinceEventAt == "" => bootstrap: leggi TUTTI gli eventi PRIZE dal foglio (raro, solo quando tabellone ricarica)
+  // - altrimenti usa tail se copre la finestra, altrimenti fallback su scan (raro)
+  let newEvents = [];
 
-  // ✅ FAST PATH: leggo SOLO le nuove righe (append-only)
-  if(useRowCursor){
-    const lastDrawRow  = shD.getLastRow();
-    const lastEventRow = shE.getLastRow();
-
-    const newDraws = [];
-    const startD = Math.max(2, (Number.isFinite(sinceDrawRow) ? sinceDrawRow : 1) + 1);
-    if(lastDrawRow >= startD){
-      const rows = shD.getRange(startD, 1, lastDrawRow - startD + 1, 4).getValues();
-      for(const r of rows){
-        if(String(r[0]||"").toUpperCase() !== roomId) continue;
-        newDraws.push({ roomId, n:Number(r[1]), drawIndex:Number(r[2])||0, at:String(r[3]||"") });
-      }
-      newDraws.sort((a,b)=>a.drawIndex-b.drawIndex);
-    }
-
-    const newEvents = [];
-    const startE = Math.max(2, (Number.isFinite(sinceEventRow) ? sinceEventRow : 1) + 1);
-    if(lastEventRow >= startE){
-      const rows = shE.getRange(startE, 1, lastEventRow - startE + 1, 8).getValues();
+  if(!sinceEventAt){
+    const shE = getOrCreateSheet_(CFG.SHEETS.EVENTS);
+    const lastE = shE.getLastRow();
+    if(lastE >= 2){
+      const rows = shE.getRange(2,1,lastE-1,8).getValues();
       for(const r of rows){
         if(String(r[0]||"").toUpperCase() !== roomId) continue;
         if(String(r[2]||"") !== "PRIZE") continue;
 
+        const at = String(r[1]||"");
         newEvents.push({
-          at: String(r[1]||""),
+          at,
           type: "PRIZE",
           playerId: String(r[3]||""),
           name: String(r[4]||""),
@@ -528,85 +612,216 @@ function delta_(p){
       newEvents.sort((a,b)=> (a.at < b.at ? -1 : (a.at > b.at ? 1 : 0)));
     }
 
-    return {
-      ok:true,
-      roomId,
-      roomStatus: String(getRoomStatus_(roomId) || ""),
-      newDraws,
-      newEvents,
+    // aggiorna state tail (utile dopo bootstrap)
+    const tail = newEvents.slice(-CFG.LIMITS.EVENTS_TAIL_MAX);
+    st.eventsTail = tail;
+    st.eventsTailFromAt = tail.length ? String(tail[0].at||"") : "";
+    st.lastEventAt = newEvents.length ? String(newEvents[newEvents.length-1].at||"") : "";
+    saveStateToSheet_(st);
 
-      // ✅ cursori row-based
-      lastDrawRow,
-      lastEventRow,
+  } else {
+    const tailFrom = String(st.eventsTailFromAt||"");
+    const tail = Array.isArray(st.eventsTail) ? st.eventsTail : [];
 
-      // compat UI
-      lastDrawIndex: newDraws.length ? newDraws[newDraws.length-1].drawIndex : Number(p.sinceDrawIndex||0)||0,
-      lastEventAt: newEvents.length ? newEvents[newEvents.length-1].at : ""
-    };
-  }
+    if(tailFrom && sinceEventAt >= tailFrom){
+      newEvents = tail.filter(e => String(e.at||"") > sinceEventAt);
+    } else {
+      // fallback scan (raro)
+      const shE = getOrCreateSheet_(CFG.SHEETS.EVENTS);
+      const lastE = shE.getLastRow();
+      if(lastE >= 2){
+        const rows = shE.getRange(2,1,lastE-1,8).getValues();
+        for(const r of rows){
+          if(String(r[0]||"").toUpperCase() !== roomId) continue;
+          if(String(r[2]||"") !== "PRIZE") continue;
 
-  // ---- Legacy fallback (se qualche client vecchio chiama ancora con sinceDrawIndex/sinceEventAt) ----
-  const sinceDrawIndex = Math.max(0, Number(p.sinceDrawIndex || 0) || 0);
-  const sinceEventAt = String(p.sinceEventAt || "").trim();
+          const at = String(r[1]||"");
+          if(at && at <= sinceEventAt) continue;
 
-  const newDraws = [];
-  const lastD = shD.getLastRow();
-  if(lastD >= 2){
-    const rows = shD.getRange(2,1,lastD-1,4).getValues();
-    for(const r of rows){
-      if(String(r[0]||"").toUpperCase() !== roomId) continue;
-      const di = Number(r[2]) || 0;
-      if(di > sinceDrawIndex){
-        newDraws.push({ roomId, n:Number(r[1]), drawIndex: di, at: String(r[3]||"") });
+          newEvents.push({
+            at,
+            type: "PRIZE",
+            playerId: String(r[3]||""),
+            name: String(r[4]||""),
+            cardIndex: Number(r[5]||0),
+            prize: String(r[6]||""),
+            payload: safeJson_(String(r[7]||"{}"))
+          });
+        }
+        newEvents.sort((a,b)=> (a.at < b.at ? -1 : (a.at > b.at ? 1 : 0)));
       }
     }
   }
-  newDraws.sort((a,b)=>a.drawIndex-b.drawIndex);
 
-  const newEvents = [];
-  const lastE = shE.getLastRow();
-  if(lastE >= 2){
-    const rows = shE.getRange(2,1,lastE-1,8).getValues();
-    for(const r of rows){
-      if(String(r[0]||"").toUpperCase() !== roomId) continue;
-      if(String(r[2]||"") !== "PRIZE") continue;
-
-      const at = String(r[1]||"");
-      if(sinceEventAt && at <= sinceEventAt) continue;
-
-      newEvents.push({
-        at,
-        type: "PRIZE",
-        playerId: String(r[3]||""),
-        name: String(r[4]||""),
-        cardIndex: Number(r[5]||0),
-        prize: String(r[6]||""),
-        payload: safeJson_(String(r[7]||"{}"))
-      });
-    }
-  }
-  newEvents.sort((a,b)=> (a.at < b.at ? -1 : (a.at > b.at ? 1 : 0)));
+  const lastDrawIndex = newDraws.length ? newDraws[newDraws.length-1].drawIndex : sinceDrawIndex;
+  const lastEventAt = newEvents.length ? newEvents[newEvents.length-1].at : sinceEventAt;
 
   return {
     ok:true,
     roomId,
-    roomStatus: String(getRoomStatus_(roomId) || ""),
+    roomStatus: String(st.roomStatus || ""),
     newDraws,
     newEvents,
-
-    // anche qui: ritorno row cursors (così puoi migrare client senza problemi)
-    lastDrawRow: shD.getLastRow(),
-    lastEventRow: shE.getLastRow(),
-
-    lastDrawIndex: newDraws.length ? newDraws[newDraws.length-1].drawIndex : sinceDrawIndex,
-    lastEventAt: newEvents.length ? newEvents[newEvents.length-1].at : sinceEventAt
+    lastDrawIndex,
+    lastEventAt
   };
 }
 
+// -------------------- MarksState / PrizesState (O(1) state) --------------------
+function getMarksStateSet_(roomId, playerId, cardIndex){
+  const rid = roomKey_(roomId);
+  const pid = String(playerId||"").trim().toUpperCase();
+  const cix = Number(cardIndex);
+  const ck = ckMarks_(rid,pid,cix);
+  const cached = cacheGetJson_(ck);
+  if(cached && cached.markedCsv != null){
+    return new Set(String(cached.markedCsv).split(",").filter(Boolean).map(x=>Number(x)));
+  }
+
+  const sh = getOrCreateSheet_(CFG.SHEETS.MARKS_STATE);
+  const key = key3_(rid,pid,cix);
+  const rowIndex = findRowByExact_(sh, 1, key);
+
+  if(rowIndex){
+    const row = sh.getRange(rowIndex,1,1,6).getValues()[0];
+    const csv = String(row[4]||"");
+    cachePutJson_(ck, { markedCsv: csv });
+    return new Set(csv.split(",").filter(Boolean).map(x=>Number(x)));
+  }
+
+  // bootstrap (se stai migrando a metà partita): ricostruisci una volta dal log Marks
+  const boot = bootstrapMarksFromLog_(rid,pid,cix);
+  saveMarksStateSet_(rid,pid,cix,boot);
+  return boot;
+}
+
+function saveMarksStateSet_(roomId, playerId, cardIndex, set){
+  const rid = roomKey_(roomId);
+  const pid = String(playerId||"").trim().toUpperCase();
+  const cix = Number(cardIndex);
+  const sh = getOrCreateSheet_(CFG.SHEETS.MARKS_STATE);
+  const key = key3_(rid,pid,cix);
+
+  const csv = [...set].filter(n=>Number.isFinite(n)).sort((a,b)=>a-b).join(",");
+  const rowIndex = findRowByExact_(sh, 1, key);
+  const out = [key, rid, pid, cix, csv, nowISO_()];
+
+  if(rowIndex){
+    sh.getRange(rowIndex,1,1,out.length).setValues([out]);
+  }else{
+    sh.appendRow(out);
+  }
+  cachePutJson_(ckMarks_(rid,pid,cix), { markedCsv: csv });
+}
+
+function bootstrapMarksFromLog_(roomId, playerId, cardIndex){
+  const rid = roomKey_(roomId);
+  const pid = String(playerId||"").trim().toUpperCase();
+  const cix = Number(cardIndex);
+
+  const shM = getOrCreateSheet_(CFG.SHEETS.MARKS);
+  const last = shM.getLastRow();
+  const lastToggle = new Map();
+
+  if(last >= 2){
+    const rows = shM.getRange(2,1,last-1,6).getValues();
+    for(const r of rows){
+      if(String(r[0])!==rid) continue;
+      if(String(r[1])!==pid) continue;
+      if(Number(r[2])!==cix) continue;
+      const nn = Number(r[3]);
+      const mk = Number(r[4])===1;
+      lastToggle.set(nn, mk);
+    }
+  }
+  return new Set([...lastToggle.entries()].filter(([,mk])=>mk).map(([nn])=>nn));
+}
+
+function getPrizesState_(roomId, playerId, cardIndex){
+  const rid = roomKey_(roomId);
+  const pid = String(playerId||"").trim().toUpperCase();
+  const cix = Number(cardIndex);
+  const ck = ckPrizes_(rid,pid,cix);
+  const cached = cacheGetJson_(ck);
+  if(cached && cached.prizesJson != null){
+    const obj = safeJson_(String(cached.prizesJson||"{}"));
+    return obj && typeof obj === "object" ? obj : {};
+  }
+
+  const sh = getOrCreateSheet_(CFG.SHEETS.PRIZES_STATE);
+  const key = key3_(rid,pid,cix);
+  const rowIndex = findRowByExact_(sh, 1, key);
+
+  if(rowIndex){
+    const row = sh.getRange(rowIndex,1,1,6).getValues()[0];
+    const pj = String(row[4]||"{}");
+    cachePutJson_(ck, { prizesJson: pj });
+    const obj = safeJson_(pj);
+    return (obj && typeof obj === "object") ? obj : {};
+  }
+
+  // bootstrap (migrazione)
+  const boot = bootstrapPrizesFromLog_(rid,pid,cix);
+  savePrizesState_(rid,pid,cix,boot);
+  return boot;
+}
+
+function savePrizesState_(roomId, playerId, cardIndex, obj){
+  const rid = roomKey_(roomId);
+  const pid = String(playerId||"").trim().toUpperCase();
+  const cix = Number(cardIndex);
+  const sh = getOrCreateSheet_(CFG.SHEETS.PRIZES_STATE);
+  const key = key3_(rid,pid,cix);
+
+  const pj = JSON.stringify(obj || {});
+  const rowIndex = findRowByExact_(sh, 1, key);
+  const out = [key, rid, pid, cix, pj, nowISO_()];
+
+  if(rowIndex){
+    sh.getRange(rowIndex,1,1,out.length).setValues([out]);
+  }else{
+    sh.appendRow(out);
+  }
+  cachePutJson_(ckPrizes_(rid,pid,cix), { prizesJson: pj });
+}
+
+function bootstrapPrizesFromLog_(roomId, playerId, cardIndex){
+  const rid = roomKey_(roomId);
+  const pid = String(playerId||"").trim().toUpperCase();
+  const cix = Number(cardIndex);
+
+  const sh = getOrCreateSheet_(CFG.SHEETS.PRIZES);
+  const last = sh.getLastRow();
+  const out = {};
+
+  if(last >= 2){
+    const rows = sh.getRange(2,1,last-1,5).getValues();
+    for(const r of rows){
+      if(String(r[0])!==rid) continue;
+      if(String(r[1])!==pid) continue;
+      if(Number(r[2])!==cix) continue;
+      const prize = String(r[3]||"").trim();
+      if(prize) out[prize] = 1;
+    }
+  }
+  return out;
+}
 
 // -------------------- Marks + prizes (cartelle) --------------------
+function getDrawIndexByNumber_(st){
+  // crea una mappa veloce n->drawIndex partendo dai draws in state (max 90)
+  const map = {};
+  const draws = Array.isArray(st.draws) ? st.draws : [];
+  for(const d of draws){
+    const nn = Number(d.n);
+    const di = Number(d.drawIndex)||0;
+    if(Number.isFinite(nn) && Number.isFinite(di)) map[nn] = di;
+  }
+  return map;
+}
+
 function mark_(p){
-  const roomId = String(p.roomId || "").trim().toUpperCase();
+  const roomId = roomKey_(p.roomId);
   const playerId = String(p.playerId || "").trim().toUpperCase();
   const cardIndex = Number(p.cardIndex);
   const n = Number(p.n);
@@ -620,12 +835,17 @@ function mark_(p){
   return lock_(()=>{
     init_();
 
-    const drawIndexMap = getDrawIndexMapFast_(roomId);
-    if(!drawIndexMap.has(n)){
+    // stato room
+    const st = getState_(roomId);
+    st.roomStatus = String(getRoomStatus_(roomId) || st.roomStatus || "");
+
+    const drawIndexByNumber = getDrawIndexByNumber_(st);
+    if(!drawIndexByNumber[n]){
       return {ok:false, error:"Number not drawn yet", roomId, n};
     }
 
-    const card = getCardFast_(roomId, playerId, cardIndex);
+    // card
+    const card = getCard_(roomId, playerId, cardIndex);
     if(!card){
       return {ok:false, error:"Card not registered", roomId, playerId, cardIndex};
     }
@@ -633,49 +853,36 @@ function mark_(p){
       return {ok:false, error:"Number not in card", roomId, n, cardIndex};
     }
 
+    // audit log mark (append-only)
     const shM = getOrCreateSheet_(CFG.SHEETS.MARKS);
     shM.appendRow([roomId, playerId, cardIndex, n, marked ? 1 : 0, nowISO_()]);
 
-    // ✅ aggiorno cache marks (così non rileggo MARKS ogni click)
-    const markedSet = applyMarkToCache_(roomId, playerId, cardIndex, n, marked);
+    // marks state (O(1))
+    const markedSet = getMarksStateSet_(roomId, playerId, cardIndex);
+    if(marked) markedSet.add(n); else markedSet.delete(n);
+    saveMarksStateSet_(roomId, playerId, cardIndex, markedSet);
 
-    const player = getOrCreatePlayer_(roomId, playerId, null);
-    const prizeSet = getPrizeSetFast_(roomId, playerId, cardIndex);
+    // player name (per event)
+    const player = getOrCreatePlayer_(roomId, playerId, String(p.name||"").trim() || null);
 
-    const { newly } = computeAndRecordPrizes_(roomId, playerId, player.name, cardIndex, card.grid, n, markedSet, drawIndexMap, prizeSet);
+    // prizes state (O(1))
+    const prizesState = getPrizesState_(roomId, playerId, cardIndex);
+
+    const { newly } = computeAndRecordPrizesFast_(
+      st, drawIndexByNumber,
+      roomId, playerId, player.name, cardIndex, card.grid, n,
+      prizesState
+    );
+
+    // salva prizes state se cambiato
+    if(newly.length){
+      savePrizesState_(roomId, playerId, cardIndex, prizesState);
+      saveStateToSheet_(st);
+    }
 
     return {ok:true, roomId, playerId, name: player.name, cardIndex, n, marked, newly};
   });
 }
-
-
-// -------------------- TABELLONE logic (auto-marks per premi) --------------------
-function autoTabelloneOnDraw_(roomId, n){
-  const playerId = CFG.TABELLONE.playerId;
-  const name = CFG.TABELLONE.name;
-
-  getOrCreatePlayer_(roomId, playerId, name);
-  ensureTabelloneCards_(roomId);
-
-  const cardIndex = tabelloneCardIndexForNumber_(n);
-  const card = getCardFast_(roomId, playerId, cardIndex);
-  if(!card) return;
-  if(!card.numbersSet.has(n)) return;
-
-  const already = getMarkedSetFast_(roomId, playerId, cardIndex);
-  if(already.has(n)) return;
-
-  const shM = getOrCreateSheet_(CFG.SHEETS.MARKS);
-  shM.appendRow([roomId, playerId, cardIndex, n, 1, nowISO_()]);
-
-  const markedSet = applyMarkToCache_(roomId, playerId, cardIndex, n, true);
-
-  const drawIndexMap = getDrawIndexMapFast_(roomId); // già aggiornato in draw_()
-  const prizeSet = getPrizeSetFast_(roomId, playerId, cardIndex);
-
-  computeAndRecordPrizes_(roomId, playerId, name, cardIndex, card.grid, n, markedSet, drawIndexMap, prizeSet);
-}
-
 
 function getOrCreatePlayer_(roomId, playerId, nameOrNull){
   const shP = getOrCreateSheet_(CFG.SHEETS.PLAYERS);
@@ -701,191 +908,69 @@ function getOrCreatePlayer_(roomId, playerId, nameOrNull){
   return {roomId, playerId, name};
 }
 
-function ensureTabelloneCards_(roomId){
-  const shC = getOrCreateSheet_(CFG.SHEETS.CARDS);
-  const playerId = CFG.TABELLONE.playerId;
-
-  const last = shC.getLastRow();
-  if(last >= 2){
-    const rows = shC.getRange(2,1,last-1,2).getValues();
-    const hasAny = rows.some(r => String(r[0])===roomId && String(r[1])===playerId);
-    if(hasAny) return;
-  }
-
-  const cards = buildTabelloneCards_();
-  cards.forEach((grid, idx)=>{
-    const nums = [];
-    for(const row of grid){
-      for(const v of row){
-        if(v !== null && v !== "" && v !== undefined) nums.push(Number(v));
-      }
-    }
-    const numbersCsv = nums.filter(n=>Number.isFinite(n)).join(",");
-    shC.appendRow([roomId, playerId, idx, JSON.stringify(grid), numbersCsv, nowISO_()]);
-  });
-}
-
-function buildTabelloneCards_(){
-  const out = [];
-  out.push(makeTabGrid_([1,2,3,4,5],   [11,12,13,14,15], [21,22,23,24,25]));
-  out.push(makeTabGrid_([6,7,8,9,10],  [16,17,18,19,20], [26,27,28,29,30]));
-  out.push(makeTabGrid_([31,32,33,34,35],[41,42,43,44,45],[51,52,53,54,55]));
-  out.push(makeTabGrid_([36,37,38,39,40],[46,47,48,49,50],[56,57,58,59,60]));
-  out.push(makeTabGrid_([61,62,63,64,65],[71,72,73,74,75],[81,82,83,84,85]));
-  out.push(makeTabGrid_([66,67,68,69,70],[76,77,78,79,80],[86,87,88,89,90]));
-  return out;
-}
-
-function makeTabGrid_(r1, r2, r3){
-  function row(nums){
-    const a = Array(9).fill(null);
-    for(let i=0;i<nums.length;i++) a[i] = nums[i];
-    return a;
-  }
-  return [row(r1), row(r2), row(r3)];
-}
-
-function tabelloneCardIndexForNumber_(n){
-  const tens = Math.floor((n-1)/10);
-  const within = ((n-1)%10) + 1;
-  const group = Math.floor(tens/3);
-  const base = group * 2;
-  return base + (within <= 5 ? 0 : 1);
-}
-
-// -------------------- Card + marks + prizes --------------------
-function getDraws_(roomId){
-  const shD = getOrCreateSheet_(CFG.SHEETS.DRAWS);
-  const last = shD.getLastRow();
-  if(last < 2) return [];
-  const rows = shD.getRange(2,1,last-1,4).getValues();
-
-  const out = [];
-  for(const r of rows){
-    if(String(r[0]||"").toUpperCase() !== roomId) continue;
-    out.push({ n:Number(r[1]), drawIndex:Number(r[2]), at:String(r[3]||"") });
-  }
-  out.sort((a,b)=>a.drawIndex-b.drawIndex);
-  return out;
-}
-
-function getDrawnSet_(roomId){
-  const draws = getDraws_(roomId);
-  return new Set(draws.map(d=>d.n));
-}
-
-function getDrawIndexMap_(roomId){
-  const draws = getDraws_(roomId);
-  const map = new Map();
-  draws.forEach(d => map.set(Number(d.n), Number(d.drawIndex)));
-  return map;
-}
-
-function getCard_(roomId, playerId, cardIndex){
-  const shC = getOrCreateSheet_(CFG.SHEETS.CARDS);
-  const last = shC.getLastRow();
-  if(last < 2) return null;
-
-  const rows = shC.getRange(2,1,last-1,6).getValues();
-  for(const r of rows){
-    if(String(r[0])!==roomId) continue;
-    if(String(r[1])!==playerId) continue;
-    if(Number(r[2])!==Number(cardIndex)) continue;
-
-    const grid = safeJson_(String(r[3]||"[]"));
-    const numbersCsv = String(r[4]||"");
-    const numbersSet = new Set(numbersCsv.split(",").filter(Boolean).map(x=>Number(x)));
-    return { grid, numbersSet };
-  }
-  return null;
-}
-
-function getMarkedSet_(roomId, playerId, cardIndex){
-  const shM = getOrCreateSheet_(CFG.SHEETS.MARKS);
-  const last = shM.getLastRow();
-  if(last < 2) return new Set();
-
-  const rows = shM.getRange(2,1,last-1,6).getValues();
-  const lastToggle = new Map();
-  for(const r of rows){
-    if(String(r[0])!==roomId) continue;
-    if(String(r[1])!==playerId) continue;
-    if(Number(r[2])!==Number(cardIndex)) continue;
-    const nn = Number(r[3]);
-    const mk = Number(r[4])===1;
-    lastToggle.set(nn, mk);
-  }
-  return new Set([...lastToggle.entries()].filter(([,mk])=>mk).map(([nn])=>nn));
-}
-
-function existsPrize_(roomId, playerId, cardIndex, prize){
-  const sh = getOrCreateSheet_(CFG.SHEETS.PRIZES);
-  const last = sh.getLastRow();
-  if(last < 2) return false;
-
-  const rows = sh.getRange(2,1,last-1,5).getValues();
-  for(const r of rows){
-    if(String(r[0])===roomId && String(r[1])===playerId && Number(r[2])===Number(cardIndex) && String(r[3])===prize){
-      return true;
-    }
-  }
-  return false;
-}
-
-function computeAndRecordPrizes_(roomId, playerId, name, cardIndex, grid, triggerN, markedSetOpt, drawIndexMapOpt, prizeSetOpt){
-  const markedSet = markedSetOpt || getMarkedSetFast_(roomId, playerId, cardIndex);
-  const drawIndexMap = drawIndexMapOpt || getDrawIndexMapFast_(roomId);
-  const prizeSet = prizeSetOpt || getPrizeSetFast_(roomId, playerId, cardIndex);
-
+function computeAndRecordPrizesFast_(
+  st, drawIndexByNumber,
+  roomId, playerId, name, cardIndex, grid, triggerN,
+  prizesState
+){
   const rowPrizes = [
     {k:2, prize:"AMBO"},
     {k:3, prize:"TERNO"},
     {k:4, prize:"QUATERNA"},
     {k:5, prize:"CINQUINA"},
   ];
-
   const newly = [];
 
+  const markedSet = getMarksStateSet_(roomId, playerId, cardIndex); // già aggiornato
+
+  // righe
   for(let r=0;r<3;r++){
     const rowNums = (grid[r]||[]).filter(v=>v!==null && v!=="" && v!==undefined).map(Number);
     const hitNums = rowNums.filter(nn=>markedSet.has(nn));
 
-    for(const {k, prize} of rowPrizes){
-      if(hitNums.length >= k && !prizeSet.has(prize)){
-        const di = hitNums.reduce((mx, nn)=> Math.max(mx, Number(drawIndexMap.get(nn)||0)), 0);
-        const candidates = hitNums.filter(nn => Number(drawIndexMap.get(nn)||0) === di);
-        const trig = candidates.includes(Number(triggerN)) ? Number(triggerN) : (candidates[0] || Number(triggerN) || null);
+    rowPrizes.forEach(({k,prize})=>{
+      if(hitNums.length >= k){
+        if(!prizesState[prize]){
+          const di = hitNums.reduce((mx, nn)=> Math.max(mx, Number(drawIndexByNumber[nn]||0)), 0);
+          const candidates = hitNums.filter(nn => Number(drawIndexByNumber[nn]||0) === di);
+          const trig = candidates.includes(Number(triggerN)) ? Number(triggerN) : (candidates[0] || Number(triggerN) || null);
 
-        const payload = {
-          row: r+1,
-          hit: hitNums.length,
-          marked: [...markedSet],
-          winNumbers: hitNums.slice().sort((a,b)=>a-b),
-          drawIndex: di,
-          triggerN: trig
-        };
+          const payload = {
+            row: r+1,
+            hit: hitNums.length,
+            marked: [...markedSet].sort((a,b)=>a-b),
+            winNumbers: hitNums.slice().sort((a,b)=>a-b),
+            drawIndex: di,
+            triggerN: trig
+          };
 
-        recordPrize_(roomId, playerId, name, cardIndex, prize, payload);
-        prizeSet.add(prize);
-
-        newly.push({prize, winNumbers: payload.winNumbers, drawIndex: di, triggerN: trig});
+          recordPrize_(st, roomId, playerId, name, cardIndex, prize, payload);
+          prizesState[prize] = 1;
+          newly.push({prize, winNumbers: payload.winNumbers, drawIndex: di, triggerN: trig});
+        }
       }
-    }
+    });
   }
 
+  // tombola
   if(markedSet.size >= 15){
     const prize = "TOMBOLA";
-    if(!prizeSet.has(prize)){
+    if(!prizesState[prize]){
       const wn = [...markedSet].sort((a,b)=>a-b);
-      const di = wn.reduce((mx, nn)=> Math.max(mx, Number(drawIndexMap.get(nn)||0)), 0);
-      const candidates = wn.filter(nn => Number(drawIndexMap.get(nn)||0) === di);
+      const di = wn.reduce((mx, nn)=> Math.max(mx, Number(drawIndexByNumber[nn]||0)), 0);
+      const candidates = wn.filter(nn => Number(drawIndexByNumber[nn]||0) === di);
       const trig = candidates.includes(Number(triggerN)) ? Number(triggerN) : (candidates[0] || Number(triggerN) || null);
 
-      const payload = { hit: markedSet.size, marked: [...markedSet], winNumbers: wn, drawIndex: di, triggerN: trig };
+      const payload = {
+        hit: markedSet.size,
+        marked: [...markedSet].sort((a,b)=>a-b),
+        winNumbers: wn,
+        drawIndex: di,
+        triggerN: trig
+      };
 
-      recordPrize_(roomId, playerId, name, cardIndex, prize, payload);
-      prizeSet.add(prize);
-
+      recordPrize_(st, roomId, playerId, name, cardIndex, prize, payload);
+      prizesState[prize] = 1;
       newly.push({prize, winNumbers: wn, drawIndex: di, triggerN: trig});
     }
   }
@@ -893,7 +978,7 @@ function computeAndRecordPrizes_(roomId, playerId, name, cardIndex, grid, trigge
   return { newly };
 }
 
-function recordPrize_(roomId, playerId, name, cardIndex, prize, payload){
+function recordPrize_(st, roomId, playerId, name, cardIndex, prize, payload){
   const shPr = getOrCreateSheet_(CFG.SHEETS.PRIZES);
   const shEv = getOrCreateSheet_(CFG.SHEETS.EVENTS);
   const ts = nowISO_();
@@ -904,9 +989,20 @@ function recordPrize_(roomId, playerId, name, cardIndex, prize, payload){
   if(!Number.isFinite(Number(p.drawIndex))) p.drawIndex = 0;
   if(!Number.isFinite(Number(p.triggerN))) p.triggerN = null;
 
+  // log
   shPr.appendRow([roomId, playerId, cardIndex, prize, ts]);
   shEv.appendRow([roomId, ts, "PRIZE", playerId, name, cardIndex, prize, JSON.stringify(p)]);
 
-  // ✅ aggiorna cache premi
-  addPrizeToCache_(roomId, playerId, cardIndex, prize);
+  // aggiorna state tail (delta veloce)
+  const ev = {
+    at: ts,
+    type: "PRIZE",
+    playerId,
+    name,
+    cardIndex: Number(cardIndex)||0,
+    prize: String(prize||""),
+    payload: p
+  };
+  pushEventToStateTail_(st, ev);
+  st.lastEventAt = ts;
 }
