@@ -1,4 +1,4 @@
-/** Tombola Natalizia - Backend Apps Script (Web App)
+/** XTombola Natalizia - Backend Apps Script (Web App)
  *  Obiettivo performance:
  *  - mark() O(1) (no scansioni su Marks/Prizes)
  *  - delta() veloce (usa State + tail eventi)
